@@ -4,7 +4,6 @@ mod config;
 
 use actix_web::{web, App, HttpServer};
 use utoipa::OpenApi;
-use utoipa::openapi::{Info, OpenApiBuilder};
 use utoipa_swagger_ui::SwaggerUi;
 use crate::app_state::AppState;
 use crate::user::user_controller::UserApi;
@@ -13,6 +12,10 @@ use crate::user::user_controller::UserApi;
 #[openapi(
     nest(
         (path = "/api/v1/user", api = UserApi),
+    ),
+    info(
+        title = "Actix-Web API",
+        version = "0.1.0",
     )
 )]
 struct ApiDoc;
@@ -21,11 +24,6 @@ struct ApiDoc;
 async fn main() -> std::io::Result<()>{
     let config = config::Config::from_env();
     let app_state = AppState::new(&config).await;
-    
-    let mut openapi = OpenApiBuilder::default()
-        .info(Info::new("Actix-Web API", "1.0.0"))
-        .build();
-    openapi.merge(UserApi::openapi());
     
     HttpServer::new(move || {
         App::new()

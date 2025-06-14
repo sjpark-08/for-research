@@ -23,14 +23,27 @@ impl UserRepository {
         Ok(user)
     }
 
-    pub async fn create(&self, name: &str, email: &str) -> Result<u64> {
-        let result = sqlx::query!(
+    pub async fn create(&self, name: &str, email: &str) -> Result<(), Error> {
+        sqlx::query!(
             "INSERT INTO users (name, email) VALUES (?, ?)",
             name, email
         )
             .execute(&self.db_pool)
             .await?;
 
-        Ok(result.last_insert_id())
+        Ok(())
+    }
+    
+    pub async fn update(&self, id: i64, name: &str, email: &str) -> Result<(), Error> {
+        sqlx::query!(
+            "UPDATE users SET name = ?, email = ? WHERE id = ?",
+            name, 
+            email,
+            id
+        )
+            .execute(&self.db_pool)
+            .await?;
+            
+        Ok(())
     }
 }

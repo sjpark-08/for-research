@@ -14,6 +14,13 @@ pub struct UserCreate {
     pub email: String,
 }
 
+#[derive(Deserialize, Debug, Clone, ToSchema)]
+pub struct UserUpdate {
+    pub id: i64,
+    pub name: String,
+    pub email: String
+}
+
 #[derive(Serialize, Debug, Clone, ToResponse)]
 pub struct UserResponse {
     pub id: i64,
