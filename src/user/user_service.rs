@@ -1,4 +1,7 @@
 use actix_web::Error;
+use crate::errors::AppError;
+use crate::errors::AppError::Database;
+use crate::user::user_error::UserError;
 use crate::user::user_model::{User, UserCreate, UserResponse, UserUpdate};
 use crate::user::user_repository::UserRepository;
 
@@ -12,9 +15,17 @@ impl UserService {
         Self { user_repository }
     }
     
-    pub async fn get_user(&self, user_id: i64) -> Result<UserResponse, Error> {
-        let user = self.user_repository.find_by_id(user_id).await.unwrap();
-        Ok(user.into())
+    pub async fn get_user(&self, user_id: i64) -> Result<UserResponse, UserError> {
+        self.user_repository
+            .find_by_id(user_id)
+            .await
+            .map_err(|db_error| {
+                match db_error {
+                    sqlx::Error::RowNotFound => UserError::NotFound,
+                    _ => db_error.into(),
+                }
+            })
+            .map(|user| user.into())
     }
     
     pub async fn create_user(&self, user_create: UserCreate) -> Result<(), Error> {

@@ -1,6 +1,7 @@
 mod user;
 mod app_state;
 mod config;
+mod errors;
 
 use actix_web::{web, App, HttpServer};
 use utoipa::OpenApi;

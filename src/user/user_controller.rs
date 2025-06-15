@@ -2,7 +2,8 @@ use crate::user::user_model;
 use actix_web::{get, post, put, web, HttpResponse, Responder, Scope};
 use utoipa::OpenApi;
 use crate::app_state::AppState;
-use crate::user::user_model::{UserCreate, UserUpdate};
+use crate::user::user_model::{UserCreate, UserUpdate, UserResponse};
+use crate::errors::{AppError, ErrorResponse};
 
 #[derive(OpenApi)]
 #[openapi(
@@ -28,7 +29,17 @@ pub fn user_api(config: &mut web::ServiceConfig) {
     get,
     path = "/{id}",
     responses(
-        (status = 200, description = "Hello message", body = String),
+        (
+            status = 200,
+            body = UserResponse,
+            description = "get user by id",
+            content_type = "application/json"
+        ),
+        (
+            status = 404,
+            body = ErrorResponse,
+            description = "user not found",
+        )
     ),
     tags = ["User"]
 )]
@@ -36,20 +47,21 @@ pub fn user_api(config: &mut web::ServiceConfig) {
 pub async fn get_user(
     state: web::Data<AppState>,
     path: web::Path<i64>
-) -> impl Responder {
+) -> Result<HttpResponse, AppError> {
     let user_id: i64 = path.into_inner();
-    
-    match state.user_service.get_user(user_id).await {
-        Ok(user) => HttpResponse::Ok().json(user),
-        Err(_) => HttpResponse::NotFound().body("User not found"),
-    }
+    let response = state.user_service.get_user(user_id).await?;
+    Ok(HttpResponse::Ok().json(response))
 }
 
 #[utoipa::path(
     post,
     path = "",
     responses(
-        (status = 201, description = "user created", body = String),
+        (
+            status = 201,
+            body = String,
+            description = "user created",
+        ),
     ),
     tags = ["User"]
 )]
@@ -68,7 +80,10 @@ pub async fn create_user(
     put,
     path = "",
     responses(
-        (status = 200, description = "update success", body = String),
+        (
+            status = 200,
+            description = "update success"
+        ),
     ),
     tags = ["User"]
 )]
