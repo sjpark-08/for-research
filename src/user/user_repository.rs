@@ -23,6 +23,34 @@ impl UserRepository {
         Ok(user)
     }
 
+    pub async fn find_by_email(&self, email: &str) -> Result<User, Error> {
+        let user = sqlx::query_as!(
+            User,
+            "SELECT id, name, email FROM users WHERE email = ?",
+            email
+        )
+            .fetch_one(&self.db_pool)
+            .await?;
+
+        Ok(user)
+    }
+
+    pub async fn email_exists(&self, email: &str) -> Result<bool, Error> {
+        let result = sqlx::query!("SELECT * FROM users WHERE email = ?", email)
+            .fetch_optional(&self.db_pool)
+            .await?;
+        
+        Ok(result.is_some())
+    }
+    
+    pub async fn name_exists(&self, name: &str) -> Result<bool, Error> {
+        let result = sqlx::query!("SELECT * FROM users WHERE name = ?", name)
+            .fetch_optional(&self.db_pool)
+            .await?;
+        
+        Ok(result.is_some())
+    }
+
     pub async fn create(&self, name: &str, email: &str) -> Result<(), Error> {
         sqlx::query!(
             "INSERT INTO users (name, email) VALUES (?, ?)",

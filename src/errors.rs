@@ -25,8 +25,8 @@ impl ResponseError for AppError {
         match self {
             AppError::User(e) => match e {
                 UserError::NotFound => StatusCode::NOT_FOUND,
-                UserError::DuplicateEmail => StatusCode::CONFLICT,
-                UserError::DuplicateName => StatusCode::CONFLICT,
+                UserError::EmailDuplicated => StatusCode::CONFLICT,
+                UserError::NameDuplicated => StatusCode::CONFLICT,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             },
             AppError::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
