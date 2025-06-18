@@ -29,7 +29,7 @@ impl UserService {
         if self.user_repository.email_exists(&user_create.email).await? {
             return Err(UserError::EmailDuplicated)
         }
-        
+
         if self.user_repository.name_exists(&user_create.name).await? {
             return Err(UserError::NameDuplicated)
         }
