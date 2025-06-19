@@ -79,7 +79,7 @@ impl UserRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     async fn init_schema(pool: &MySqlPool) {
         sqlx::query("
             CREATE TABLE IF NOT EXISTS users (
@@ -120,19 +120,19 @@ mod tests {
         init_schema(&pool).await;
         let user_repository = UserRepository::new(pool);
         let email = "duplicate@example.com";
-        
+
         let first_creation_result = user_repository.create("user1", email).await;
         assert!(first_creation_result.is_ok());
         let second_creation_result = user_repository.create("user2", email).await;
         assert!(second_creation_result.is_err());
     }
-    
+
     #[sqlx::test]
     async fn create_user_fails_on_duplicate_name(pool: MySqlPool) {
         init_schema(&pool).await;
         let user_repository = UserRepository::new(pool);
         let name = "duplicate";
-        
+
         let first_creation_result = user_repository.create(name, "user1@example.com").await;
         assert!(first_creation_result.is_ok());
         let second_creation_result = user_repository.create(name, "user2@example.com").await;
