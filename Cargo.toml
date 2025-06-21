@@ -12,3 +12,5 @@ sqlx = { version = "0.8.6", features = ["runtime-async-std-native-tls", "mysql",
 dotenv = "0.15.0"
 serde = { version = "1.0.219", features = ["derive"]}
 thiserror = "2.0.12"
+async-trait = "0.1.88"
+mockall = "0.13.1"

@@ -1,17 +1,33 @@
+use async_trait::async_trait;
+use mockall::automock;
 use sqlx::{Error, MySqlPool, Result};
 use crate::user::user_model::User;
 
+#[automock]
+#[async_trait]
+pub trait UserRepository: Send + Sync {
+    async fn find_by_id(&self, id: i64) -> Result<User, Error>;
+    async fn find_by_email(&self, email: &str) -> Result<User, Error>;
+    async fn email_exists(&self, email: &str) -> Result<bool, Error>;
+    async fn name_exists(&self, name: &str) -> Result<bool, Error>;
+    async fn create(&self, name: &str, email: &str) -> Result<i64, Error>;
+    async fn update(&self, id: i64, name: &str, email: &str) -> Result<(), Error>;
+}
+
 #[derive(Clone)]
-pub struct UserRepository {
+pub struct UserSqlxRepository {
     pub db_pool: MySqlPool,
 }
 
-impl UserRepository {
+impl UserSqlxRepository {
     pub fn new(db_pool: MySqlPool) -> Self {
         Self { db_pool }
     }
+}
 
-    pub async fn find_by_id(&self, id: i64) -> Result<User, Error> {
+#[async_trait]
+impl UserRepository for UserSqlxRepository {
+    async fn find_by_id(&self, id: i64) -> Result<User, Error> {
         let user = sqlx::query_as!(
             User,
             "SELECT id, name, email FROM users WHERE id = ?", 
@@ -23,7 +39,7 @@ impl UserRepository {
         Ok(user)
     }
 
-    pub async fn find_by_email(&self, email: &str) -> Result<User, Error> {
+    async fn find_by_email(&self, email: &str) -> Result<User, Error> {
         let user = sqlx::query_as!(
             User,
             "SELECT id, name, email FROM users WHERE email = ?",
@@ -35,7 +51,7 @@ impl UserRepository {
         Ok(user)
     }
 
-    pub async fn email_exists(&self, email: &str) -> Result<bool, Error> {
+    async fn email_exists(&self, email: &str) -> Result<bool, Error> {
         let result = sqlx::query!("SELECT * FROM users WHERE email = ?", email)
             .fetch_optional(&self.db_pool)
             .await?;
@@ -43,7 +59,7 @@ impl UserRepository {
         Ok(result.is_some())
     }
 
-    pub async fn name_exists(&self, name: &str) -> Result<bool, Error> {
+    async fn name_exists(&self, name: &str) -> Result<bool, Error> {
         let result = sqlx::query!("SELECT * FROM users WHERE name = ?", name)
             .fetch_optional(&self.db_pool)
             .await?;
@@ -51,7 +67,7 @@ impl UserRepository {
         Ok(result.is_some())
     }
 
-    pub async fn create(&self, name: &str, email: &str) -> Result<i64, Error> {
+    async fn create(&self, name: &str, email: &str) -> Result<i64, Error> {
         let result = sqlx::query!(
             "INSERT INTO users (name, email) VALUES (?, ?)",
             name, email
@@ -62,7 +78,7 @@ impl UserRepository {
         Ok(result.last_insert_id() as i64)
     }
     
-    pub async fn update(&self, id: i64, name: &str, email: &str) -> Result<(), Error> {
+    async fn update(&self, id: i64, name: &str, email: &str) -> Result<(), Error> {
         sqlx::query!(
             "UPDATE users SET name = ?, email = ? WHERE id = ?",
             name, 
@@ -95,7 +111,7 @@ mod tests {
     #[sqlx::test]
     async fn create_user_success(pool: MySqlPool) {
         init_schema(&pool).await;
-        let user_repository = UserRepository::new(pool);
+        let user_repository = UserSqlxRepository::new(pool);
         let name = "create_test";
         let email = "create_test@example.com";
 
@@ -113,7 +129,7 @@ mod tests {
     #[sqlx::test]
     async fn create_user_fails_on_duplicate_email(pool: MySqlPool) {
         init_schema(&pool).await;
-        let user_repository = UserRepository::new(pool);
+        let user_repository = UserSqlxRepository::new(pool);
         let email = "duplicate@example.com";
 
         let first_creation_result = user_repository.create("user1", email).await;
@@ -125,7 +141,7 @@ mod tests {
     #[sqlx::test]
     async fn create_user_fails_on_duplicate_name(pool: MySqlPool) {
         init_schema(&pool).await;
-        let user_repository = UserRepository::new(pool);
+        let user_repository = UserSqlxRepository::new(pool);
         let name = "duplicate";
 
         let first_creation_result = user_repository.create(name, "user1@example.com").await;
@@ -137,7 +153,7 @@ mod tests {
     #[sqlx::test]
     async fn find_by_id_success(pool: MySqlPool) {
         init_schema(&pool).await;
-        let user_repository = UserRepository::new(pool);
+        let user_repository = UserSqlxRepository::new(pool);
         let user_id = user_repository.create("test", "test").await.unwrap();
 
         let result = user_repository.find_by_id(user_id).await;
@@ -151,7 +167,7 @@ mod tests {
     #[sqlx::test]
     async fn find_by_id_fails(pool: MySqlPool) {
         init_schema(&pool).await;
-        let user_repository = UserRepository::new(pool);
+        let user_repository = UserSqlxRepository::new(pool);
 
         let result = user_repository.find_by_id(99).await;
         assert!(result.is_err());
@@ -161,7 +177,7 @@ mod tests {
     #[sqlx::test]
     async fn find_by_email_success(pool: MySqlPool) {
         init_schema(&pool).await;
-        let user_repository = UserRepository::new(pool);
+        let user_repository = UserSqlxRepository::new(pool);
         let user_id = user_repository.create("test", "test").await.unwrap();
 
         let result = user_repository.find_by_email("test").await;
@@ -175,7 +191,7 @@ mod tests {
     #[sqlx::test]
     async fn find_by_email_fails(pool: MySqlPool) {
         init_schema(&pool).await;
-        let user_repository = UserRepository::new(pool);
+        let user_repository = UserSqlxRepository::new(pool);
         let user_id = user_repository.create("test", "test").await.unwrap();
 
         let result = user_repository.find_by_email("invalid@email").await;
@@ -186,7 +202,7 @@ mod tests {
     #[sqlx::test]
     async fn email_exists_success(pool: MySqlPool) {
         init_schema(&pool).await;
-        let user_repository = UserRepository::new(pool);
+        let user_repository = UserSqlxRepository::new(pool);
         user_repository.create("test", "test@example.com").await.unwrap();
 
         let result = user_repository.email_exists("test@example.com").await;
@@ -198,7 +214,7 @@ mod tests {
     #[sqlx::test]
     async fn email_exists_fails(pool: MySqlPool) {
         init_schema(&pool).await;
-        let user_repository = UserRepository::new(pool);
+        let user_repository = UserSqlxRepository::new(pool);
 
         let result = user_repository.email_exists("invalid@email").await;
         assert!(result.is_ok());
@@ -209,7 +225,7 @@ mod tests {
     #[sqlx::test]
     async fn name_exists_success(pool: MySqlPool) {
         init_schema(&pool).await;
-        let user_repository = UserRepository::new(pool);
+        let user_repository = UserSqlxRepository::new(pool);
         user_repository.create("test", "test@example.com").await.unwrap();
 
         let result = user_repository.name_exists("test").await;
@@ -221,7 +237,7 @@ mod tests {
     #[sqlx::test]
     async fn name_exists_fails(pool: MySqlPool) {
         init_schema(&pool).await;
-        let user_repository = UserRepository::new(pool);
+        let user_repository = UserSqlxRepository::new(pool);
 
         let result = user_repository.name_exists("invalid").await;
         assert!(result.is_ok());
@@ -232,7 +248,7 @@ mod tests {
     #[sqlx::test]
     async fn update_user_success(pool: MySqlPool) {
         init_schema(&pool).await;
-        let user_repository = UserRepository::new(pool);
+        let user_repository = UserSqlxRepository::new(pool);
         let user_id = user_repository.create("test", "test@example.com").await.unwrap();
 
         let new_name = "updated";
@@ -244,25 +260,25 @@ mod tests {
         assert_eq!(user.name, new_name);
         assert_eq!(user.email, new_email);
     }
-    
+
     #[sqlx::test]
     async fn update_user_fails_on_duplicate_email(pool: MySqlPool) {
         init_schema(&pool).await;
-        let user_repository = UserRepository::new(pool);
+        let user_repository = UserSqlxRepository::new(pool);
         let user1_id = user_repository.create("userA", "userA@email.com").await.unwrap();
         let user2_id = user_repository.create("userB", "userB@email.com").await.unwrap();
-        
+
         let result = user_repository.update(user1_id, "userB", "userAA@email.com").await;
         assert!(result.is_err());
     }
-    
+
     #[sqlx::test]
     async fn update_user_fails_on_duplicate_name(pool: MySqlPool) {
         init_schema(&pool).await;
-        let user_repository = UserRepository::new(pool);
+        let user_repository = UserSqlxRepository::new(pool);
         let user1_id = user_repository.create("userA", "userA@email.com").await.unwrap();
         let user2_id = user_repository.create("userB", "userB@email.com").await.unwrap();
-        
+
         let result = user_repository.update(user1_id, "userAA", "userB@email.com").await;
         assert!(result.is_err());
     }

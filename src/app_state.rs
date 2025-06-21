@@ -1,8 +1,9 @@
+use std::sync::Arc;
 use sqlx::mysql::MySqlPoolOptions;
 use sqlx::MySqlPool;
 use crate::user::user_service::UserService;
 use crate::config::Config;
-use crate::user::user_repository::UserRepository;
+use crate::user::user_repository::{UserRepository, UserSqlxRepository};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -17,9 +18,9 @@ impl AppState {
             .await
             .expect("Failed to connect to database");
         
-        let user_repository = UserRepository::new(db_pool.clone());
+        let user_repository = UserSqlxRepository::new(db_pool.clone());
         
-        let user_service = UserService::new(user_repository);
+        let user_service = UserService::new(Arc::new(user_repository));
         
         Self {
             user_service,

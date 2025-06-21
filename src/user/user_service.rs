@@ -1,14 +1,15 @@
+use std::sync::Arc;
 use crate::user::user_error::UserError;
 use crate::user::user_model::{UserCreate, UserResponse, UserUpdate};
 use crate::user::user_repository::UserRepository;
 
 #[derive(Clone)]
 pub struct UserService {
-    pub user_repository: UserRepository,
+    pub user_repository: Arc<dyn UserRepository>,
 }
 
 impl UserService {
-    pub fn new(user_repository: UserRepository) -> Self {
+    pub fn new(user_repository: Arc<dyn UserRepository>) -> Self {
         Self { user_repository }
     }
     
