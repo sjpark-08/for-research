@@ -44,3 +44,84 @@ impl UserService {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::user::user_repository::MockUserRepository;
+    use crate::user::user_model::UserCreate;
+    use mockall::predicate::*;
+    use std::sync::Arc;
+
+    #[tokio::test]
+    async fn create_user_success() {
+        let mut user_repository = MockUserRepository::new();
+        user_repository.expect_email_exists().returning(|_| Ok(false));
+        user_repository.expect_name_exists().returning(|_| Ok(false));
+
+        let name = "test".to_string();
+        let email = "test@example.com".to_string();
+
+        user_repository.expect_create()
+            .with(eq(name.clone()), eq(email.clone()))
+            .times(1)
+            .returning(|_, _| Ok(1));
+
+        let user_service = UserService::new(Arc::new(user_repository));
+        let user_create = UserCreate {
+            name: name.clone(),
+            email: email.clone(),
+        };
+
+        let result = user_service.create_user(user_create).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn create_user_fails_on_duplicate_email() {
+        let mut user_repository = MockUserRepository::new();
+
+        let name = "test".to_string();
+        let email = "test@example.com".to_string();
+    
+        user_repository.expect_email_exists()
+            .with(eq(email.clone()))
+            .times(1)
+            .returning(|_| Ok(true));
+        user_repository.expect_name_exists().returning(|_| Ok(false));
+        user_repository.expect_create().never();
+
+        let user_service = UserService::new(Arc::new(user_repository));
+        let user_create = UserCreate {
+            name: name.clone(),
+            email: email.clone(),
+        };
+
+        let result = user_service.create_user(user_create).await;
+        assert!(matches!(result, Err(UserError::EmailDuplicated)));
+    }
+    
+    #[tokio::test]
+    async fn create_user_fails_on_duplicate_name() {
+        let mut user_repository = MockUserRepository::new();
+        
+        let name = "test".to_string();
+        let email = "test@example.com".to_string();
+        
+        user_repository.expect_email_exists().returning(|_| Ok(false));
+        user_repository.expect_name_exists()
+            .with(eq(name.clone()))
+            .times(1)
+            .returning(|_| Ok(true));
+        user_repository.expect_create().never();
+        
+        let user_service = UserService::new(Arc::new(user_repository));
+        let user_create = UserCreate {
+            name: name.clone(),
+            email: email.clone(),
+        };
+        
+        let result = user_service.create_user(user_create).await;
+        assert!(matches!(result, Err(UserError::NameDuplicated)));
+    }
+}
