@@ -49,7 +49,7 @@ impl UserService {
 mod tests {
     use super::*;
     use crate::user::user_repository::MockUserRepository;
-    use crate::user::user_model::UserCreate;
+    use crate::user::user_model::{User, UserCreate};
     use mockall::predicate::*;
     use std::sync::Arc;
 
@@ -123,5 +123,32 @@ mod tests {
         
         let result = user_service.create_user(user_create).await;
         assert!(matches!(result, Err(UserError::NameDuplicated)));
+    }
+
+    #[tokio::test]
+    async fn get_user_success(){
+        let mut user_repository = MockUserRepository::new();
+        let user_id = 1;
+        let name = "test";
+        let email = "test@example.com";
+        let expected_user = User {
+            id: user_id,
+            name: name.to_string(),
+            email: email.to_string(),
+        };
+
+        user_repository.expect_find_by_id()
+            .with(eq(user_id))
+            .times(1)
+            .returning(move |_| Ok(expected_user.clone()));
+        
+        let user_service = UserService::new(Arc::new(user_repository));
+        
+        let result = user_service.get_user(user_id).await;
+        assert!(result.is_ok());
+        let user = result.unwrap();
+        assert_eq!(user.id, user_id);
+        assert_eq!(user.name, name);
+        assert_eq!(user.email, email);
     }
 }
