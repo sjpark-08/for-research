@@ -151,4 +151,38 @@ mod tests {
         assert_eq!(user.name, name);
         assert_eq!(user.email, email);
     }
+
+    #[tokio::test]
+    async fn get_user_fails_when_user_not_found() {
+        let mut user_repository = MockUserRepository::new();
+        let user_id = 9999;
+
+        user_repository.expect_find_by_id()
+            .with(eq(user_id))
+            .times(1)
+            .returning(|_| Err(sqlx::Error::RowNotFound));
+
+        let user_service = UserService::new(Arc::new(user_repository));
+
+        let result = user_service.get_user(user_id).await;
+
+        assert!(matches!(result, Err(UserError::NotFound)));
+    }
+
+    #[tokio::test]
+    async fn get_user_fails_on_db_error() {
+        let mut user_repository = MockUserRepository::new();
+        let user_id = 1;
+
+        user_repository.expect_find_by_id()
+            .with(eq(user_id))
+            .times(1)
+            .returning(|_| Err(sqlx::Error::PoolTimedOut));
+
+        let user_service = UserService::new(Arc::new(user_repository));
+        
+        let result = user_service.get_user(user_id).await;
+        
+        assert!(matches!(result, Err(UserError::DatabaseError(_))));
+    }
 }
