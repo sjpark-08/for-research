@@ -2,6 +2,7 @@ mod user;
 mod app_state;
 mod config;
 mod errors;
+mod youtube_data;
 
 use actix_web::{web, App, HttpServer};
 use utoipa::OpenApi;
