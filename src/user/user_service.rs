@@ -31,16 +31,16 @@ impl UserService {
             return Err(UserError::EmailDuplicated)
         }
 
-        if self.user_repository.name_exists(&user_create.name).await? {
+        if self.user_repository.username_exists(&user_create.username).await? {
             return Err(UserError::NameDuplicated)
         }
 
-        let result = self.user_repository.create(&user_create.name, &user_create.email).await?;
+        let result = self.user_repository.create(&user_create.email, &user_create.username, &user_create.password).await?;
         Ok(())
     }
     
     pub async fn update_user(&self, user_update: UserUpdate) -> Result<(), UserError> {
-        let result = self.user_repository.update(user_update.id, &user_update.name, &user_update.email).await?;
+        let result = self.user_repository.update(user_update.id, &user_update.email, &user_update.username).await?;
         Ok(())
     }
 }
@@ -52,25 +52,28 @@ mod tests {
     use crate::user::user_model::{User, UserCreate};
     use mockall::predicate::*;
     use std::sync::Arc;
+    use chrono::Utc;
 
     #[tokio::test]
     async fn create_user_success() {
         let mut user_repository = MockUserRepository::new();
         user_repository.expect_email_exists().returning(|_| Ok(false));
-        user_repository.expect_name_exists().returning(|_| Ok(false));
+        user_repository.expect_username_exists().returning(|_| Ok(false));
 
-        let name = "test".to_string();
         let email = "test@example.com".to_string();
+        let password = "test".to_string();
+        let username = "test".to_string();
 
         user_repository.expect_create()
-            .with(eq(name.clone()), eq(email.clone()))
+            .with(eq(email.clone()), eq(password.clone()), eq(username.clone()))
             .times(1)
-            .returning(|_, _| Ok(1));
+            .returning(|_, _, _| Ok(1));
 
         let user_service = UserService::new(Arc::new(user_repository));
         let user_create = UserCreate {
-            name: name.clone(),
             email: email.clone(),
+            password: password.clone(),
+            username: username.clone(),
         };
 
         let result = user_service.create_user(user_create).await;
@@ -81,20 +84,22 @@ mod tests {
     async fn create_user_fails_on_duplicate_email() {
         let mut user_repository = MockUserRepository::new();
 
-        let name = "test".to_string();
         let email = "test@example.com".to_string();
+        let password = "test".to_string();
+        let username = "test".to_string();
     
         user_repository.expect_email_exists()
             .with(eq(email.clone()))
             .times(1)
             .returning(|_| Ok(true));
-        user_repository.expect_name_exists().returning(|_| Ok(false));
+        user_repository.expect_username_exists().returning(|_| Ok(false));
         user_repository.expect_create().never();
 
         let user_service = UserService::new(Arc::new(user_repository));
         let user_create = UserCreate {
-            name: name.clone(),
             email: email.clone(),
+            password: password.clone(),
+            username: username.clone(),
         };
 
         let result = user_service.create_user(user_create).await;
@@ -105,20 +110,22 @@ mod tests {
     async fn create_user_fails_on_duplicate_name() {
         let mut user_repository = MockUserRepository::new();
         
-        let name = "test".to_string();
         let email = "test@example.com".to_string();
+        let password = "test".to_string();
+        let username = "test".to_string();
         
         user_repository.expect_email_exists().returning(|_| Ok(false));
-        user_repository.expect_name_exists()
-            .with(eq(name.clone()))
+        user_repository.expect_username_exists()
+            .with(eq(username.clone()))
             .times(1)
             .returning(|_| Ok(true));
         user_repository.expect_create().never();
         
         let user_service = UserService::new(Arc::new(user_repository));
         let user_create = UserCreate {
-            name: name.clone(),
             email: email.clone(),
+            password: password.clone(),
+            username: username.clone(),
         };
         
         let result = user_service.create_user(user_create).await;
@@ -130,11 +137,15 @@ mod tests {
         let mut user_repository = MockUserRepository::new();
         let user_id = 1;
         let name = "test";
+        let password = "test";
         let email = "test@example.com";
         let expected_user = User {
             id: user_id,
-            name: name.to_string(),
             email: email.to_string(),
+            password: password.to_string(),
+            username: name.to_string(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
         };
 
         user_repository.expect_find_by_id()
@@ -148,7 +159,7 @@ mod tests {
         assert!(result.is_ok());
         let user = result.unwrap();
         assert_eq!(user.id, user_id);
-        assert_eq!(user.name, name);
+        assert_eq!(user.username, name);
         assert_eq!(user.email, email);
     }
 
