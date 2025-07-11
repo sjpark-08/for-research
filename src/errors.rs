@@ -4,6 +4,7 @@ use serde::Serialize;
 use thiserror::Error;
 use utoipa::ToSchema;
 use crate::user::user_error::UserError;
+use crate::youtube::youtube_data_api::youtube_data_api_error::YoutubeDataAPIError;
 
 #[derive(Error, Debug)]
 pub enum AppError {
@@ -12,6 +13,9 @@ pub enum AppError {
 
     #[error(transparent)]
     Database(#[from] sqlx::Error),
+
+    #[error(transparent)]
+    YoutubeDataAPI(#[from] YoutubeDataAPIError),
 }
 
 #[derive(Serialize, ToSchema)]
@@ -30,6 +34,7 @@ impl ResponseError for AppError {
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             },
             AppError::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::YoutubeDataAPI(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 

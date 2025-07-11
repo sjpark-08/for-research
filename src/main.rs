@@ -2,7 +2,7 @@ mod user;
 mod app_state;
 mod config;
 mod errors;
-mod youtube_data;
+mod youtube;
 
 use actix_web::{web, App, HttpServer};
 use utoipa::OpenApi;
@@ -26,6 +26,9 @@ struct ApiDoc;
 async fn main() -> std::io::Result<()>{
     let config = config::Config::from_env();
     let app_state = AppState::new(&config).await;
+    
+    env_logger::init();
+    youtube::youtube_video::youtube_video_scheduler::init_scheduler(app_state.clone());
     
     HttpServer::new(move || {
         App::new()

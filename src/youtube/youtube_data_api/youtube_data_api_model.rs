@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 // 'search.list' API 구조체
 #[derive(Debug, Deserialize)]
@@ -27,7 +27,7 @@ pub struct VideoListResponse {
     pub next_page_token: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VideoItem {
     pub id: String,
@@ -39,7 +39,7 @@ pub struct VideoItem {
     pub topic_details: Option<TopicDetails>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Snippet {
     pub published_at: String,
@@ -51,27 +51,27 @@ pub struct Snippet {
     pub category_id: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ContentDetails {
     pub duration: String, // ISO 8601  "PT1M5S"
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Statistics {
-    pub view_count: i64,
-    pub like_count: i64,
-    pub comment_count: i64,
+    pub view_count: String,
+    pub like_count: Option<String>,
+    pub comment_count: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Player {
     pub embed_html: String,
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TopicDetails {
     #[serde(default)]
