@@ -29,7 +29,11 @@ impl YoutubeRawVideoRepository for YoutubeRawVideoSqlxRepository {
     async fn find_by_video_id(&self, video_id: &str) -> Result<YoutubeRawVideo, Error> {
         let raw_video = sqlx::query_as!(
             YoutubeRawVideo,
-            r#"SELECT id, video_id, raw_metadata, created_at, updated_at FROM youtube_raw_videos WHERE video_id = ?"#,
+            r#"
+                SELECT id, video_id, raw_metadata, created_at, updated_at 
+                FROM youtube_raw_videos 
+                WHERE video_id = ?
+            "#,
             video_id
         )
             .fetch_one(&self.db_pool)
@@ -40,11 +44,11 @@ impl YoutubeRawVideoRepository for YoutubeRawVideoSqlxRepository {
     async fn save(&self, raw_video: &YoutubeRawVideo) -> Result<i64, Error> {
         let result = sqlx::query!(
             r#"
-            INSERT INTO youtube_raw_videos (video_id, raw_metadata)
-            VALUES (?, ?)
-            ON DUPLICATE KEY UPDATE
-                                 raw_metadata = VALUES(raw_metadata),
-                                 updated_at = CURRENT_TIMESTAMP
+                INSERT INTO youtube_raw_videos (video_id, raw_metadata)
+                VALUES (?, ?)
+                ON DUPLICATE KEY UPDATE
+                                     raw_metadata = VALUES(raw_metadata),
+                                     updated_at = CURRENT_TIMESTAMP
             "#,
             raw_video.video_id,
             raw_video.raw_metadata

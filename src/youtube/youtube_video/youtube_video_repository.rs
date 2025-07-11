@@ -3,14 +3,14 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use mockall::automock;
 use sqlx::{Error, MySqlPool};
-use crate::youtube::youtube_video::youtube_video_model::{YoutubeKeyword, YoutubeVideo};
+use crate::youtube::youtube_video::youtube_video_model::{KeywordTrend, YoutubeKeyword, YoutubeVideo};
 
 #[automock]
 #[async_trait]
 pub trait YoutubeVideoRepository: Send + Sync {
     async fn save_video_and_keywords(&self, youtube_video: YoutubeVideo, keywords: &[YoutubeKeyword]) -> Result<(), Error>;
     
-    async fn get_videos_and_keywords_by_time(&self, time: DateTime<Utc>);
+    async fn get_keyword_trends(&self, since: DateTime<Utc>, limit: u32) -> Result<Vec<KeywordTrend>, Error>;
 }
 
 #[derive(Clone)]
@@ -47,10 +47,18 @@ impl YoutubeVideoRepository for YoutubeVideoSqlxRepository {
         // 영상 정보 저장
         let video_id = sqlx::query!(
             r#"
-            INSERT INTO youtube_videos (
-                video_id, published_at, channel_id, title, description, channel_title,
-                tags, duration, view_count, like_count, comment_count, embed_html, topic_categories
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO youtube_videos (
+                    video_id, published_at, channel_id, title, description, channel_title,
+                    tags, duration, view_count, like_count, comment_count, embed_html, topic_categories
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    title = VALUES(title),
+                    description = VALUES(description),
+                    tags = VALUES(tags),
+                    view_count = VALUES(view_count),
+                    like_count = VALUES(like_count),
+                    comment_count = VALUES(comment_count),
+                    updated_at = CURRENT_TIMESTAMP
             "#,
             youtube_video.video_id,
             youtube_video.published_at,
@@ -69,6 +77,18 @@ impl YoutubeVideoRepository for YoutubeVideoSqlxRepository {
             .execute(&mut *tx)
             .await?
             .last_insert_id() as i64;
+        
+        sqlx::query!(
+            r#"
+                DELETE yvk
+                FROM youtube_video_keywords AS yvk
+                JOIN youtube_videos AS yv ON yvk.video_id = yv.id
+                WHERE yv.video_id = ?
+            "#,
+            youtube_video.video_id
+        )
+            .execute(&mut *tx)
+            .await?;
         
         // 키워드 벌크 INSERT
         let keyword_texts: Vec<&str> = keywords.iter().map(|k| k.keyword_text.as_str()).collect();
@@ -122,7 +142,30 @@ impl YoutubeVideoRepository for YoutubeVideoSqlxRepository {
         Ok(())
     }
     
-    async fn get_videos_and_keywords_by_time(&self, time: DateTime<Utc>) {
-        todo!()
+    async fn get_keyword_trends(
+        &self,
+        since: DateTime<Utc>,
+        limit: u32
+    ) -> Result<Vec<KeywordTrend>, Error> {
+        let trends = sqlx::query_as!(
+            KeywordTrend,
+            r#"
+                SELECT yk.keyword_text,
+                       SUM(yv.view_count) as "total_views"
+                FROM youtube_videos AS yv
+                JOIN youtube_video_keywords AS yvk ON yv.id = yvk.video_id
+                JOIN youtube_keywords AS yk ON yvk.keyword_id = yk.id
+                WHERE yv.updated_at >= ?
+                GROUP BY yk.keyword_text
+                ORDER BY total_views DESC
+                LIMIT ?;
+            "#,
+            since,
+            limit
+        )
+            .fetch_all(&self.db_pool)
+            .await?;
+        
+        Ok(trends)
     }
 }
