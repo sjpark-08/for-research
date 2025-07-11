@@ -43,9 +43,7 @@ impl YoutubeVideoService {
         let final_shorts: Vec<VideoItem> = detailed_videos
             .into_iter()
             .filter(|video| {
-                let duration = Self::parse_duration_to_seconds(&video.content_details.duration);
-                let is_vertical = Self::is_vertical(&video.player.embed_html);
-                
+                let duration = video.content_details.as_seconds();
                 duration > 10 && duration <= 61 
             })
             .collect();
@@ -62,50 +60,5 @@ impl YoutubeVideoService {
         }
         println!("쇼츠 수집 및 저장 완료");
         Ok(())
-    }
-    
-    fn parse_duration_to_seconds(duration: &str) -> i64 {
-        let Some(duration) = duration.strip_prefix("PT") else { return 0 };
-        let mut seconds = 0;
-        let mut current_number = 0;
-        
-        for ch in duration.chars() {
-            if ch.is_ascii_digit() {
-                current_number = current_number * 10 + ch.to_digit(10).unwrap() as i64;
-            } else {
-                match ch {
-                    'H' => {
-                        seconds += current_number * 3600;
-                        current_number = 0;
-                    }
-                    'M' => {
-                        seconds += current_number * 60;
-                        current_number = 0;
-                    }
-                    'S' => {
-                        seconds += current_number;
-                        current_number = 0;
-                    }
-                    _ => {}
-                }
-            }
-        }
-        println!("seconds: {}", seconds);
-        seconds
-    }
-    fn is_vertical(embed_html: &str) -> bool {
-        let get_value = |key: &str| -> Option<i32> {
-            embed_html.split(key)
-                .nth(1)?
-                .split_once(|c: char| !c.is_ascii_digit())?
-                .0.parse().ok()
-        };
-        if let (Some(width), Some(height)) = (get_value("width"), get_value("height")) {
-            println!("{} {}", height, width);
-            height > width
-        } else {
-            println!("no have");
-            false
-        }
     }
 }

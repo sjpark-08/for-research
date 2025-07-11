@@ -77,3 +77,34 @@ pub struct TopicDetails {
     #[serde(default)]
     pub topic_categories: Vec<String>,
 }
+
+impl ContentDetails {
+    pub fn as_seconds(&self) -> i32 {
+        let Some(duration) = self.duration.strip_prefix("PT") else { return 0 };
+        let mut seconds = 0;
+        let mut current_number = 0;
+        
+        for ch in duration.chars() {
+            if ch.is_ascii_digit() {
+                current_number = current_number * 10 + ch.to_digit(10).unwrap() as i32;
+            } else {
+                match ch {
+                    'H' => {
+                        seconds += current_number * 3600;
+                        current_number = 0;
+                    }
+                    'M' => {
+                        seconds += current_number * 60;
+                        current_number = 0;
+                    }
+                    'S' => {
+                        seconds += current_number;
+                        current_number = 0;
+                    }
+                    _ => {}
+                }
+            }
+        }
+        seconds
+    }
+}
