@@ -2,22 +2,26 @@ use std::sync::Arc;
 use crate::youtube::youtube_data_api::youtube_data_api_model::VideoItem;
 use crate::youtube::youtube_data_api::youtube_data_api_util::YoutubeDataAPIClient;
 use crate::youtube::youtube_video::youtube_raw_video_repository::YoutubeRawVideoRepository;
-use crate::youtube::youtube_video::youtube_video_model::YoutubeRawVideo;
+use crate::youtube::youtube_video::youtube_video_model::{YoutubeRawVideo, YoutubeVideo};
+use crate::youtube::youtube_video::youtube_video_repository::YoutubeVideoRepository;
 
 #[derive(Clone)]
 pub struct YoutubeVideoService {
     youtube_data_api_client: Arc<YoutubeDataAPIClient>,
     youtube_raw_video_repository: Arc<dyn YoutubeRawVideoRepository>,
+    youtube_video_repository: Arc<dyn YoutubeVideoRepository>,
 }
 
 impl YoutubeVideoService {
     pub fn new(
         youtube_data_api_client: Arc<YoutubeDataAPIClient>,
         youtube_raw_video_repository: Arc<dyn YoutubeRawVideoRepository>,
+        youtube_video_repository: Arc<dyn YoutubeVideoRepository>,
     ) -> Self {
         Self {
             youtube_data_api_client,
-            youtube_raw_video_repository
+            youtube_raw_video_repository,
+            youtube_video_repository,
         }
     }
     
@@ -48,17 +52,28 @@ impl YoutubeVideoService {
             })
             .collect();
         
-        let videos_to_save: Vec<YoutubeRawVideo> = final_shorts
+        let raw_videos_to_save: Vec<YoutubeRawVideo> = final_shorts
             .iter()
             .map(YoutubeRawVideo::from)
             .collect();
         
-        if !videos_to_save.is_empty() {
-            if let Err(e) = self.youtube_raw_video_repository.save_many(&videos_to_save).await {
+        if !raw_videos_to_save.is_empty() {
+            if let Err(e) = self.youtube_raw_video_repository.save_many(&raw_videos_to_save).await {
                 eprintln!("DB 저장 실패 {}", e);
             }
         }
         println!("쇼츠 수집 및 저장 완료");
+        
+        let videos_to_save: Vec<YoutubeVideo> = final_shorts
+            .iter()
+            .map(YoutubeVideo::from)
+            .collect();
+        
+        // TODO: 각 video 에서 keywords 추출 및 저장
+        for video in videos_to_save {
+        
+        }
+        
         Ok(())
     }
 }

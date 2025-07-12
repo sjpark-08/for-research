@@ -5,6 +5,7 @@ use crate::config::Config;
 use crate::user::user_repository::UserSqlxRepository;
 use crate::youtube::youtube_data_api::youtube_data_api_util::YoutubeDataAPIClient;
 use crate::youtube::youtube_video::youtube_raw_video_repository::YoutubeRawVideoSqlxRepository;
+use crate::youtube::youtube_video::youtube_video_repository::YoutubeVideoSqlxRepository;
 use crate::youtube::youtube_video::youtube_video_service::YoutubeVideoService;
 
 #[derive(Clone)]
@@ -26,9 +27,11 @@ impl AppState {
         
         let youtube_data_client = YoutubeDataAPIClient::new(&config);
         let youtube_raw_video_repository = YoutubeRawVideoSqlxRepository::new(db_pool.clone());
+        let youtube_video_repository = YoutubeVideoSqlxRepository::new(db_pool.clone());
         let youtube_video_service = YoutubeVideoService::new(
             Arc::new(youtube_data_client),
-            Arc::new(youtube_raw_video_repository)
+            Arc::new(youtube_raw_video_repository),
+            Arc::new(youtube_video_repository),
         );
         
         Self {
