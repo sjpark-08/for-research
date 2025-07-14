@@ -16,7 +16,7 @@ pub fn init_scheduler(app_state: AppState) {
                 async move {
                     match app_state_clone
                         .youtube_video_service
-                        .collect_and_save_raw_videos()
+                        .run_video_collection_pipeline()
                         .await
                     {
                         Ok(_) => {

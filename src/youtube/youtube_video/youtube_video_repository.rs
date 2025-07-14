@@ -8,7 +8,7 @@ use crate::youtube::youtube_video::youtube_video_model::{KeywordTrend, YoutubeKe
 #[automock]
 #[async_trait]
 pub trait YoutubeVideoRepository: Send + Sync {
-    async fn save_video_and_keywords(&self, youtube_video: YoutubeVideo, keywords: &[YoutubeKeyword]) -> Result<(), Error>;
+    async fn save_video_and_keywords(&self, youtube_video: YoutubeVideo, keywords: Vec<YoutubeKeyword>) -> Result<(), Error>;
     
     async fn get_keyword_trends(&self, since: DateTime<Utc>, limit: u32) -> Result<Vec<KeywordTrend>, Error>;
 }
@@ -29,7 +29,7 @@ impl YoutubeVideoRepository for YoutubeVideoSqlxRepository {
     async fn save_video_and_keywords(
         &self,
         youtube_video: YoutubeVideo,
-        keywords: &[YoutubeKeyword]
+        keywords: Vec<YoutubeKeyword>
     ) -> Result<(), Error> {
         
         if keywords.is_empty() {
