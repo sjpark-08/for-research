@@ -108,3 +108,9 @@ impl ContentDetails {
         seconds
     }
 }
+
+impl Snippet {
+    pub fn has_korean(&self) -> bool {
+        self.title.chars().any(|c| ('가'..='힣').contains(&c))
+    }
+}

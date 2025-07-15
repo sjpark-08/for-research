@@ -3,6 +3,7 @@ mod app_state;
 mod config;
 mod errors;
 mod youtube;
+mod gemini;
 
 use actix_web::{web, App, HttpServer};
 use utoipa::OpenApi;

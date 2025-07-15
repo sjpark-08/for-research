@@ -24,16 +24,16 @@ impl YoutubeDataAPIClient {
     ) -> Result<SearchListResponse, YoutubeDataAPIError> {
         let url = "https://www.googleapis.com/youtube/v3/search";
         
-        let two_week_ago = Utc::now() - TimeDelta::weeks(4);
-        let published_after_str = two_week_ago.to_rfc3339();
+        let a_week_ago = Utc::now() - TimeDelta::weeks(1);
+        let published_after_str = a_week_ago.to_rfc3339();
         
         let mut query_params: Vec<(&str, String)> = Vec::new();
         query_params.push(("part", "id".to_string()));
-        // query_params.push(("order", "viewCount".to_string()));
+        query_params.push(("order", "relevance".to_string()));
         query_params.push(("publishedAfter", published_after_str));
         query_params.push(("videoDuration", "short".to_string()));
         query_params.push(("type", "video".to_string()));
-        query_params.push(("q", "#쇼츠".to_string()));
+        query_params.push(("q", query.to_string()));
         query_params.push(("maxResults", "50".to_string()));
         query_params.push(("regionCode", "KR".to_string()));
         query_params.push(("relevanceLanguage", "ko".to_string()));

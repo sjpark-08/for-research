@@ -2,6 +2,7 @@ use std::sync::Arc;
 use sqlx::mysql::MySqlPoolOptions;
 use crate::user::user_service::UserService;
 use crate::config::Config;
+use crate::gemini::gemini_api_util::GeminiAPIClient;
 use crate::user::user_repository::UserSqlxRepository;
 use crate::youtube::youtube_data_api::youtube_data_api_util::YoutubeDataAPIClient;
 use crate::youtube::youtube_video::youtube_raw_video_repository::YoutubeRawVideoSqlxRepository;
@@ -25,6 +26,8 @@ impl AppState {
         let user_repository = UserSqlxRepository::new(db_pool.clone());
         let user_service = UserService::new(Arc::new(user_repository));
         
+        let gemini_api_client = GeminiAPIClient::new(&config);
+        
         let youtube_data_client = YoutubeDataAPIClient::new(&config);
         let youtube_raw_video_repository = YoutubeRawVideoSqlxRepository::new(db_pool.clone());
         let youtube_video_repository = YoutubeVideoSqlxRepository::new(db_pool.clone());
@@ -32,6 +35,7 @@ impl AppState {
             Arc::new(youtube_data_client),
             Arc::new(youtube_raw_video_repository),
             Arc::new(youtube_video_repository),
+            Arc::new(gemini_api_client),
         );
         
         Self {

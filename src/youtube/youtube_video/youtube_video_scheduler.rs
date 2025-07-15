@@ -10,7 +10,7 @@ pub fn init_scheduler(app_state: AppState) {
         
         scheduler
             .every(1.day())
-            .at("15:35")
+            .at("16:10")
             .run(move || {
                 let app_state_clone = app_state.clone();
                 async move {
