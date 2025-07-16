@@ -1,6 +1,7 @@
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::Serialize;
 use serde_json::Value as JsonValue;
+use utoipa::{ToResponse, ToSchema};
 use crate::youtube::youtube_data_api::youtube_data_api_model::VideoItem;
 
 #[derive(Serialize, Debug, Clone, sqlx::FromRow)]
@@ -44,6 +45,7 @@ pub struct YoutubeKeywordRanking {
     pub ranking_date: NaiveDate,
     pub ranking: i32,
     pub keyword_id: i64,
+    pub keyword_text: String,
     pub score: i64,
 }
 
@@ -54,7 +56,23 @@ pub struct KeywordTrend {
     pub total_views: Option<i64>,
 }
 
+#[derive(Serialize, Debug, Clone, ToResponse, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct KeywordRankingResponse {
+    pub ranking: i32,
+    pub keyword_text: String,
+    pub score: i64,
+    pub rank_change: RankChange,
+}
 
+#[derive(Serialize, Debug, Clone, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum RankChange {
+    Up(i32),
+    Down(i32),
+    Same,
+    New,
+}
 impl From<&VideoItem> for YoutubeRawVideo {
     fn from(item: &VideoItem) -> Self {
         let raw_metadata_json = serde_json::to_value(item)
@@ -95,6 +113,17 @@ impl From<&VideoItem> for YoutubeVideo {
             topic_categories: item.topic_details.as_ref().map(|details| details.topic_categories.clone()),
             created_at: Default::default(),
             updated_at: Default::default(),
+        }
+    }
+}
+
+impl From<(YoutubeKeywordRanking, RankChange)> for KeywordRankingResponse {
+    fn from((ranking_data, rank_change): (YoutubeKeywordRanking, RankChange)) -> Self {
+        Self {
+            ranking: ranking_data.ranking,
+            keyword_text: ranking_data.keyword_text,
+            score: ranking_data.score,
+            rank_change: rank_change,
         }
     }
 }

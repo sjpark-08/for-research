@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use mockall::automock;
 use sqlx::{Error, MySqlPool};
 use crate::youtube::youtube_video::youtube_video_model::{KeywordTrend, YoutubeKeyword, YoutubeKeywordRanking, YoutubeVideo};
@@ -13,6 +13,8 @@ pub trait YoutubeVideoRepository: Send + Sync {
     async fn get_keyword_trends(&self, since: DateTime<Utc>, limit: u32) -> Result<Vec<KeywordTrend>, Error>;
     
     async fn save_keyword_rankings(&self, rankings: &[YoutubeKeywordRanking]) -> Result<(), Error>;
+    
+    async fn get_keyword_rankings(&self, date: NaiveDate, limit: u32) -> Result<Vec<YoutubeKeywordRanking>, Error>;
 }
 
 #[derive(Clone)]
@@ -47,7 +49,7 @@ impl YoutubeVideoRepository for YoutubeVideoSqlxRepository {
                                                .and_then(|topics_vec| serde_json::to_string(topics_vec).ok());
         
         // 영상 정보 저장
-        sqlx::query!(
+        let video_id =sqlx::query!(
             r#"
                 INSERT INTO youtube_videos (
                     video_id, published_at, channel_id, title, description, channel_title,
@@ -60,7 +62,8 @@ impl YoutubeVideoRepository for YoutubeVideoSqlxRepository {
                     view_count = VALUES(view_count),
                     like_count = VALUES(like_count),
                     comment_count = VALUES(comment_count),
-                    updated_at = CURRENT_TIMESTAMP
+                    updated_at = CURRENT_TIMESTAMP,
+                    id = LAST_INSERT_ID(id)
             "#,
             youtube_video.video_id,
             youtube_video.published_at,
@@ -77,7 +80,8 @@ impl YoutubeVideoRepository for YoutubeVideoSqlxRepository {
             topics_json
         )
             .execute(&mut *tx)
-            .await?;
+            .await?
+            .last_insert_id() as i64;
         
         sqlx::query!(
             r#"
@@ -125,7 +129,7 @@ impl YoutubeVideoRepository for YoutubeVideoSqlxRepository {
         let mut link_params = Vec::new();
         for keyword in keywords {
             if let Some(keyword_id) = keyword_map.get(&keyword.keyword_text) {
-                link_params.push((youtube_video.id, *keyword_id));
+                link_params.push((video_id, *keyword_id));
             }
         }
         
@@ -178,9 +182,9 @@ impl YoutubeVideoRepository for YoutubeVideoSqlxRepository {
         let mut tx = self.db_pool.begin().await?;
         
         let mut query_builder = String::from(
-          "INSERT INTO youtube_keyword_rankings (ranking_date, ranking, keyword_id, score) VALUES "  
+          "INSERT INTO youtube_keyword_rankings (ranking_date, ranking, keyword_id, keyword_text, score) VALUES "
         );
-        query_builder.push_str(&vec!["(?, ?, ?, ?)"; rankings.len()].join(", "));
+        query_builder.push_str(&vec!["(?, ?, ?, ?, ?)"; rankings.len()].join(", "));
         
         let mut query = sqlx::query(&query_builder);
         for rank in rankings {
@@ -188,6 +192,7 @@ impl YoutubeVideoRepository for YoutubeVideoSqlxRepository {
                 .bind(rank.ranking_date)
                 .bind(rank.ranking)
                 .bind(rank.keyword_id)
+                .bind(&rank.keyword_text)
                 .bind(rank.score);
         }
         
@@ -195,5 +200,24 @@ impl YoutubeVideoRepository for YoutubeVideoSqlxRepository {
         tx.commit().await?;
         
         Ok(())
+    }
+    
+    async fn get_keyword_rankings(&self, date: NaiveDate, limit: u32) -> Result<Vec<YoutubeKeywordRanking>, Error> {
+        let rankings = sqlx::query_as!(
+            YoutubeKeywordRanking,
+            r#"
+                SELECT id, ranking_date, ranking, keyword_id, keyword_text, score
+                FROM youtube_keyword_rankings
+                WHERE ranking_date = ?
+                ORDER BY ranking
+                LIMIT ?;
+            "#,
+            date,
+            limit
+        )
+            .fetch_all(&self.db_pool)
+            .await?;
+        
+        Ok(rankings)
     }
 }

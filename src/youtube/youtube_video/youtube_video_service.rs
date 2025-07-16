@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::error::Error;
 use chrono::{TimeDelta, Timelike, Utc};
@@ -5,7 +6,7 @@ use crate::gemini::gemini_api_util::GeminiAPIClient;
 use crate::youtube::youtube_data_api::youtube_data_api_model::VideoItem;
 use crate::youtube::youtube_data_api::youtube_data_api_util::YoutubeDataAPIClient;
 use crate::youtube::youtube_video::youtube_raw_video_repository::YoutubeRawVideoRepository;
-use crate::youtube::youtube_video::youtube_video_model::{YoutubeKeyword, YoutubeKeywordRanking, YoutubeRawVideo, YoutubeVideo};
+use crate::youtube::youtube_video::youtube_video_model::{KeywordRankingResponse, RankChange, YoutubeKeyword, YoutubeKeywordRanking, YoutubeRawVideo, YoutubeVideo};
 use crate::youtube::youtube_video::youtube_video_repository::YoutubeVideoRepository;
 
 #[derive(Clone)]
@@ -49,20 +50,32 @@ impl YoutubeVideoService {
         let search_tags = vec!["#shorts", "#쇼츠"];
         let search_query = search_tags.join("|");
         let mut video_ids = Vec::new();
-        let mut next_page_token: Option<String> = None;
-        const MAX_PAGES_TO_FETCH: u32 = 5;
         
-        for _page_num in 0..MAX_PAGES_TO_FETCH {
-            let response = self.youtube_data_api_client
-                               .search_popular_shorts_ids(&search_query, next_page_token.as_deref())
-                               .await?;
-            let ids: Vec<String> = response.items.into_iter().map(|item| item.id.video_id).collect();
-            video_ids.extend(ids);
+        for day in 0..8 {
+            let now = Utc::now();
+            let end_time = now - TimeDelta::days(day);
+            let start_time = now - TimeDelta::days(day + 1);
+            let mut next_page_token: Option<String> = None;
+            const MAX_PAGES_TO_FETCH: u32 = 10;
             
-            if let Some(token) = response.next_page_token {
-                next_page_token = Some(token);
-            } else {
-                break;
+            for _page_num in 0..MAX_PAGES_TO_FETCH {
+                let response = self.youtube_data_api_client
+                                   .search_popular_shorts_ids(
+                                       &search_query,
+                                       start_time,
+                                       end_time,
+                                       next_page_token.as_deref()
+                                   )
+                                   .await?;
+                let ids: Vec<String> = response.items.into_iter().map(|item| item.id.video_id).collect();
+                video_ids.extend(ids);
+                
+                if let Some(token) = response.next_page_token {
+                    next_page_token = Some(token);
+                } else {
+                    break;
+                }
+                println!("{}", _page_num);
             }
         }
         
@@ -72,6 +85,7 @@ impl YoutubeVideoService {
             let details = self.youtube_data_api_client.get_videos_details(&chunk).await?;
             detailed_videos.extend(details);
         }
+        println!("{}", detailed_videos.len());
         
         Ok(detailed_videos)
     }
@@ -154,17 +168,51 @@ impl YoutubeVideoService {
                     ranking_date: today,
                     ranking: (index + 1) as i32,
                     keyword_id: trend.id,
+                    keyword_text: trend.keyword_text,
                     score: trend.total_views.unwrap_or(0),
                 }
             })
             .collect();
-        
+        println!("{:?}", rankings_to_save);
         self.youtube_video_repository.save_keyword_rankings(&rankings_to_save).await?;
         
         Ok(())
     }
 
-    async fn get_daily_rankings(&self) -> Result<(), Box<dyn Error>> {
-        Ok(())
+    pub async fn get_daily_rankings(&self) -> Result<Vec<KeywordRankingResponse>, Box<dyn Error>> {
+        let today = Utc::now().date_naive();
+        let yesterday = today - TimeDelta::days(1);
+        const RANKING_LIMIT: u32 = 50;
+        
+        let today_rankings = self.youtube_video_repository.get_keyword_rankings(today, RANKING_LIMIT).await?;
+        let yesterday_rankings = self. youtube_video_repository.get_keyword_rankings(yesterday, RANKING_LIMIT).await?;
+        
+        let yesterday_rankings_map: HashMap<String, i32> = yesterday_rankings
+            .into_iter()
+            .map(|rank| (rank.keyword_text, rank.ranking))
+            .collect();
+        
+        let rankings = today_rankings
+            .into_iter()
+            .map(|today_rank| {
+                let rank_change = match yesterday_rankings_map.get(&today_rank.keyword_text) {
+                    Some(yesterday_rank_value) => {
+                        let diff = yesterday_rank_value - today_rank.ranking;
+                        if diff > 0 {
+                            RankChange::Up(diff)
+                        } else if diff < 0 {
+                            RankChange::Down(-diff)
+                        } else {
+                            RankChange::Same
+                        }
+                    },
+                    None => RankChange::New
+                };
+                
+                KeywordRankingResponse::from((today_rank, rank_change))
+            })
+            .collect();
+        
+        Ok(rankings)
     }
 }

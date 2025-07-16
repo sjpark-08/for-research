@@ -10,11 +10,13 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 use crate::app_state::AppState;
 use crate::user::user_controller::UserApi;
+use crate::youtube::youtube_video::youtube_video_controller::YoutubeApi;
 
 #[derive(OpenApi)]
 #[openapi(
     nest(
         (path = "/api/v1/user", api = UserApi),
+        (path = "/api/v1/data/youtube", api = YoutubeApi),
     ),
     info(
         title = "Actix-Web API",
@@ -39,6 +41,7 @@ async fn main() -> std::io::Result<()>{
                     .url("/api-docs/openapi.json", ApiDoc::openapi())
             )
             .service(web::scope("/api/v1/user").configure(user::user_controller::user_api))
+            .service(web::scope("api/v1/data/youtube").configure(youtube::youtube_video::youtube_video_controller::youtube_api))
     })
         .bind(&config.server_address)?
         .run()

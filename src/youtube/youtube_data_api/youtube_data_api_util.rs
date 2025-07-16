@@ -1,4 +1,4 @@
-use chrono::{TimeDelta, Utc};
+use chrono::{DateTime, TimeDelta, Utc};
 use crate::config::Config;
 use crate::youtube::youtube_data_api::youtube_data_api_error::YoutubeDataAPIError;
 use crate::youtube::youtube_data_api::youtube_data_api_model::{SearchListResponse, VideoItem, VideoListResponse};
@@ -20,17 +20,20 @@ impl YoutubeDataAPIClient {
     pub async fn search_popular_shorts_ids(
         &self,
         query: &str,
+        published_after: DateTime<Utc>,
+        published_before: DateTime<Utc>,
         page_token: Option<&str>
     ) -> Result<SearchListResponse, YoutubeDataAPIError> {
         let url = "https://www.googleapis.com/youtube/v3/search";
         
-        let a_week_ago = Utc::now() - TimeDelta::weeks(1);
-        let published_after_str = a_week_ago.to_rfc3339();
+        let published_after_str = published_after.to_rfc3339();
+        let published_before_str = published_before.to_rfc3339();
         
         let mut query_params: Vec<(&str, String)> = Vec::new();
         query_params.push(("part", "id".to_string()));
-        query_params.push(("order", "relevance".to_string()));
+        // query_params.push(("order", "date".to_string()));
         query_params.push(("publishedAfter", published_after_str));
+        query_params.push(("publishedBefore", published_before_str));
         query_params.push(("videoDuration", "short".to_string()));
         query_params.push(("type", "video".to_string()));
         query_params.push(("q", query.to_string()));
