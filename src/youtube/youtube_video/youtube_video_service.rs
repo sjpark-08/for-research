@@ -1,10 +1,11 @@
 use std::sync::Arc;
 use std::error::Error;
+use chrono::{TimeDelta, Timelike, Utc};
 use crate::gemini::gemini_api_util::GeminiAPIClient;
 use crate::youtube::youtube_data_api::youtube_data_api_model::VideoItem;
 use crate::youtube::youtube_data_api::youtube_data_api_util::YoutubeDataAPIClient;
 use crate::youtube::youtube_video::youtube_raw_video_repository::YoutubeRawVideoRepository;
-use crate::youtube::youtube_video::youtube_video_model::{YoutubeKeyword, YoutubeRawVideo, YoutubeVideo};
+use crate::youtube::youtube_video::youtube_video_model::{YoutubeKeyword, YoutubeKeywordRanking, YoutubeRawVideo, YoutubeVideo};
 use crate::youtube::youtube_video::youtube_video_repository::YoutubeVideoRepository;
 
 #[derive(Clone)]
@@ -32,15 +33,15 @@ impl YoutubeVideoService {
     
     pub async fn run_video_collection_pipeline(&self) -> Result<(), Box<dyn Error>> {
         let raw_video_items = self.fetch_video_items_from_data_api().await?;
-        println!("[Extract] {}개의 후보 영상 상세 정보 수집 완료", raw_video_items.len());
         
         let video_items = self.filter_raw_video_data(raw_video_items).await?;
-        println!("[Extract] {}개의 영상으로 필터링 완료", video_items.len());
         
         self.save_raw_video_data(&video_items).await?;
         
         self.transform_and_save_video_data(&video_items).await?;
         
+        self.calculate_and_store_daily_rankings().await?;
+
         Ok(())
     }
     
@@ -130,6 +131,40 @@ impl YoutubeVideoService {
     async fn save_video_and_keywords(&self, video: YoutubeVideo, keywords: Vec<YoutubeKeyword>) -> Result<(), Box<dyn Error>> {
         self.youtube_video_repository.save_video_and_keywords(video, keywords).await?;
         
+        Ok(())
+    }
+    
+    async fn calculate_and_store_daily_rankings(&self) -> Result<(), Box<dyn Error>> {
+        let today = Utc::now().date_naive();
+        let one_week_ago = Utc::now() - TimeDelta::days(7);
+        let start_of_day = one_week_ago
+            .with_hour(0).unwrap()
+            .with_minute(0).unwrap()
+            .with_second(0).unwrap()
+            .with_nanosecond(0).unwrap();
+        
+        let trends = self.youtube_video_repository.get_keyword_trends(start_of_day, 50).await?;
+        
+        let rankings_to_save: Vec<YoutubeKeywordRanking> = trends
+            .into_iter()
+            .enumerate()
+            .map(|(index, trend)| {
+                YoutubeKeywordRanking {
+                    id: 0,
+                    ranking_date: today,
+                    ranking: (index + 1) as i32,
+                    keyword_id: trend.id,
+                    score: trend.total_views.unwrap_or(0),
+                }
+            })
+            .collect();
+        
+        self.youtube_video_repository.save_keyword_rankings(&rankings_to_save).await?;
+        
+        Ok(())
+    }
+
+    async fn get_daily_rankings(&self) -> Result<(), Box<dyn Error>> {
         Ok(())
     }
 }

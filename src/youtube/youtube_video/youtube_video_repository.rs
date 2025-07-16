@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use mockall::automock;
 use sqlx::{Error, MySqlPool};
-use crate::youtube::youtube_video::youtube_video_model::{KeywordTrend, YoutubeKeyword, YoutubeVideo};
+use crate::youtube::youtube_video::youtube_video_model::{KeywordTrend, YoutubeKeyword, YoutubeKeywordRanking, YoutubeVideo};
 
 #[automock]
 #[async_trait]
@@ -11,6 +11,8 @@ pub trait YoutubeVideoRepository: Send + Sync {
     async fn save_video_and_keywords(&self, youtube_video: YoutubeVideo, keywords: Vec<YoutubeKeyword>) -> Result<(), Error>;
     
     async fn get_keyword_trends(&self, since: DateTime<Utc>, limit: u32) -> Result<Vec<KeywordTrend>, Error>;
+    
+    async fn save_keyword_rankings(&self, rankings: &[YoutubeKeywordRanking]) -> Result<(), Error>;
 }
 
 #[derive(Clone)]
@@ -45,7 +47,7 @@ impl YoutubeVideoRepository for YoutubeVideoSqlxRepository {
                                                .and_then(|topics_vec| serde_json::to_string(topics_vec).ok());
         
         // 영상 정보 저장
-        let video_id = sqlx::query!(
+        sqlx::query!(
             r#"
                 INSERT INTO youtube_videos (
                     video_id, published_at, channel_id, title, description, channel_title,
@@ -75,8 +77,7 @@ impl YoutubeVideoRepository for YoutubeVideoSqlxRepository {
             topics_json
         )
             .execute(&mut *tx)
-            .await?
-            .last_insert_id() as i64;
+            .await?;
         
         sqlx::query!(
             r#"
@@ -124,7 +125,7 @@ impl YoutubeVideoRepository for YoutubeVideoSqlxRepository {
         let mut link_params = Vec::new();
         for keyword in keywords {
             if let Some(keyword_id) = keyword_map.get(&keyword.keyword_text) {
-                link_params.push((video_id, *keyword_id));
+                link_params.push((youtube_video.id, *keyword_id));
             }
         }
         
@@ -150,8 +151,8 @@ impl YoutubeVideoRepository for YoutubeVideoSqlxRepository {
         let trends = sqlx::query_as!(
             KeywordTrend,
             r#"
-                SELECT yk.keyword_text,
-                       SUM(yv.view_count) as "total_views"
+                SELECT yk.id, yk.keyword_text,
+                       CAST(SUM(yv.view_count) AS SIGNED ) as "total_views"
                 FROM youtube_videos AS yv
                 JOIN youtube_video_keywords AS yvk ON yv.id = yvk.video_id
                 JOIN youtube_keywords AS yk ON yvk.keyword_id = yk.id
@@ -167,5 +168,32 @@ impl YoutubeVideoRepository for YoutubeVideoSqlxRepository {
             .await?;
         
         Ok(trends)
+    }
+    
+    async fn save_keyword_rankings(&self, rankings: &[YoutubeKeywordRanking]) -> Result<(), Error> {
+        if rankings.is_empty() {
+            return Ok(());
+        }
+        
+        let mut tx = self.db_pool.begin().await?;
+        
+        let mut query_builder = String::from(
+          "INSERT INTO youtube_keyword_rankings (ranking_date, ranking, keyword_id, score) VALUES "  
+        );
+        query_builder.push_str(&vec!["(?, ?, ?, ?)"; rankings.len()].join(", "));
+        
+        let mut query = sqlx::query(&query_builder);
+        for rank in rankings {
+            query = query
+                .bind(rank.ranking_date)
+                .bind(rank.ranking)
+                .bind(rank.keyword_id)
+                .bind(rank.score);
+        }
+        
+        query.execute(&mut *tx).await?;
+        tx.commit().await?;
+        
+        Ok(())
     }
 }

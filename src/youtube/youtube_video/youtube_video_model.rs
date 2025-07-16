@@ -1,7 +1,6 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use serde::Serialize;
 use serde_json::Value as JsonValue;
-use sqlx::types::BigDecimal;
 use crate::youtube::youtube_data_api::youtube_data_api_model::VideoItem;
 
 #[derive(Serialize, Debug, Clone, sqlx::FromRow)]
@@ -39,11 +38,22 @@ pub struct YoutubeKeyword {
     pub keyword_text: String,
 }
 
+#[derive(Serialize, Debug, Clone, sqlx::FromRow)]
+pub struct YoutubeKeywordRanking {
+    pub id: i64,
+    pub ranking_date: NaiveDate,
+    pub ranking: i32,
+    pub keyword_id: i64,
+    pub score: i64,
+}
+
 #[derive(Debug, sqlx::FromRow)]
 pub struct KeywordTrend {
+    pub id: i64,
     pub keyword_text: String,
-    pub total_views: Option<BigDecimal>,
+    pub total_views: Option<i64>,
 }
+
 
 impl From<&VideoItem> for YoutubeRawVideo {
     fn from(item: &VideoItem) -> Self {
