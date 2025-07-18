@@ -34,7 +34,10 @@ impl ResponseError for AppError {
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             },
             AppError::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            AppError::YoutubeDataAPI(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::YoutubeDataAPI(e) => match e {
+                YoutubeDataAPIError::RequestError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+                YoutubeDataAPIError::UploadPlayListNotFound => StatusCode::NOT_FOUND,
+            } 
         }
     }
 

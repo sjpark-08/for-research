@@ -28,11 +28,12 @@ impl AppState {
         
         let gemini_api_client = GeminiAPIClient::new(&config);
         
-        let youtube_data_client = YoutubeDataAPIClient::new(&config);
+        let batch_youtube_data_client = YoutubeDataAPIClient::new(&config.batch_google_api_key);
+        let youtube_data_client = YoutubeDataAPIClient::new(&config.google_api_key);
         let youtube_raw_video_repository = YoutubeRawVideoSqlxRepository::new(db_pool.clone());
         let youtube_video_repository = YoutubeVideoSqlxRepository::new(db_pool.clone());
         let youtube_video_service = YoutubeVideoService::new(
-            Arc::new(youtube_data_client),
+            Arc::new(batch_youtube_data_client),
             Arc::new(youtube_raw_video_repository),
             Arc::new(youtube_video_repository),
             Arc::new(gemini_api_client),

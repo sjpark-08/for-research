@@ -78,6 +78,102 @@ pub struct TopicDetails {
     pub topic_categories: Vec<String>,
 }
 
+// 'search.list' (for channels) 구조체
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChannelSearchResponse {
+    pub items: Vec<ChannelSearchResultItem>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ChannelSearchResultItem {
+    pub id: ChannelSearchResultId,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChannelSearchResultId {
+    pub channel_id: String,
+}
+
+// 'channels.list' API 구조체
+#[derive(Debug, Deserialize)]
+pub struct ChannelListResponse {
+    pub items: Vec<ChannelItem>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChannelItem {
+    pub id: String,
+    pub snippet: ChannelSnippet,
+    pub content_details: ChannelContentDetails,
+    pub statistics: ChannelStatistics,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChannelSnippet {
+    pub title: String,
+    pub description: String,
+    pub custom_url: String,
+    pub thumbnails: ThumbnailDetails,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChannelContentDetails {
+    pub related_playlists: RelatedPlaylists,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChannelStatistics {
+    pub view_count: String,
+    #[serde(default)]
+    pub subscriber_count: String,
+    pub video_count: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RelatedPlaylists {
+    pub uploads: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ThumbnailDetails {
+    pub default: Thumbnail,
+    pub medium: Thumbnail,
+    pub high: Thumbnail,
+}
+#[derive(Debug, Deserialize)]
+pub struct Thumbnail {
+    pub url: String,
+    pub width: u32,
+    pub height: u32,
+}
+
+// 'playlistItems.list' API 구조체
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaylistItemListResponse {
+    pub items: Vec<PlaylistItem>,
+    pub next_page_token: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaylistItem {
+    pub content_details: PlaylistItemContentDetails,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaylistItemContentDetails {
+    pub video_id: String,
+}
+
 impl ContentDetails {
     pub fn as_seconds(&self) -> i32 {
         let Some(duration) = self.duration.strip_prefix("PT") else { return 0 };

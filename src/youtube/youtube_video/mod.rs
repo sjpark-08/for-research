@@ -3,4 +3,3 @@ pub mod youtube_video_repository;
 pub mod youtube_video_service;
 pub mod youtube_video_model;
 pub mod youtube_video_scheduler;
-pub mod youtube_video_controller;

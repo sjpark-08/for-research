@@ -1,15 +1,17 @@
 use std::error::Error;
-use actix_web::{get, web, HttpResponse};
+use actix_web::{get, post, web, HttpResponse};
 use utoipa::OpenApi;
 use crate::app_state::AppState;
 use crate::errors::ErrorResponse;
+use crate::youtube::youtube_channel::youtube_channel_model::{ChannelKeywordResponse, ChannelResponse};
 use crate::youtube::youtube_video::youtube_video_model::KeywordRankingResponse;
 
 #[derive(OpenApi)]
 #[openapi(
     paths(
         get_daily_keyword_rankings,
-        get_channels_keyword
+        get_channels,
+        get_channels_keyword,
     ),
     components(),
     tags(
@@ -19,7 +21,9 @@ use crate::youtube::youtube_video::youtube_video_model::KeywordRankingResponse;
 pub struct YoutubeApi;
 
 pub fn youtube_api(config: &mut web::ServiceConfig) {
-    config.service(get_daily_keyword_rankings);
+    config.service(get_daily_keyword_rankings)
+        .service(get_channels)
+        .service(get_channels_keyword);
 }
 
 #[utoipa::path(
@@ -50,12 +54,12 @@ pub async fn get_daily_keyword_rankings(
 
 #[utoipa::path(
     get,
-    path = "/keyword/channel/{channel_id}",
+    path = "/channel",
     responses(
         (
             status = 200,
-            body = KeywordRankingResponse,
-            description = "get youtube channel's keywords",
+            body = ChannelResponse,
+            description = "get youtube channels",
             content_type = "application/json"
         ),
         (
@@ -66,7 +70,32 @@ pub async fn get_daily_keyword_rankings(
     ),
     tags = ["Youtube Data"]
 )]
-#[get("/keyword/channel/{channel_id}")]
+#[get("/channel")]
+pub async fn get_channels(
+    state: web::Data<AppState>
+) -> Result<HttpResponse, Box<dyn Error>> {
+    Ok(HttpResponse::Ok().json(""))
+}
+
+#[utoipa::path(
+    get,
+    path = "/channel/keyword",
+    responses(
+        (
+            status = 200,
+            body = ChannelKeywordResponse,
+            description = "get youtube channels' keywords",
+            content_type = "application/json"
+        ),
+        (
+            status = 400,
+            body = ErrorResponse,
+            description = "failed to get data",
+        )
+    ),
+    tags = ["Youtube Data"]
+)]
+#[get("/channel/keyword")]
 pub async fn get_channels_keyword(
     state: web::Data<AppState>
 ) -> Result<HttpResponse, Box<dyn Error>> {
