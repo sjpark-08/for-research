@@ -1,5 +1,6 @@
 use std::error::Error;
 use actix_web::{get, post, web, HttpResponse};
+use mockall::Any;
 use utoipa::OpenApi;
 use crate::app_state::AppState;
 use crate::errors::ErrorResponse;
@@ -12,6 +13,7 @@ use crate::youtube::youtube_video::youtube_video_model::KeywordRankingResponse;
         get_daily_keyword_rankings,
         get_channels,
         get_channels_keyword,
+        analyze_channels_keyword
     ),
     components(),
     tags(
@@ -23,7 +25,8 @@ pub struct YoutubeApi;
 pub fn youtube_api(config: &mut web::ServiceConfig) {
     config.service(get_daily_keyword_rankings)
         .service(get_channels)
-        .service(get_channels_keyword);
+        .service(get_channels_keyword)
+        .service(analyze_channels_keyword);
 }
 
 #[utoipa::path(
@@ -97,6 +100,30 @@ pub async fn get_channels(
 )]
 #[get("/channel/keyword")]
 pub async fn get_channels_keyword(
+    state: web::Data<AppState>
+) -> Result<HttpResponse, Box<dyn Error>> {
+    Ok(HttpResponse::Ok().json(""))
+}
+
+#[utoipa::path(
+    post,
+    path = "/channel/keyword",
+    responses(
+        (
+            status = 200,
+            description = "post analyze youtube channels' keywords",
+            content_type = "application/json"
+        ),
+        (
+            status = 400,
+            body = ErrorResponse,
+            description = "failed to get data",
+        )
+    ),
+    tags = ["Youtube Data"]
+)]
+#[post("/channel/keyword")]
+pub async fn analyze_channels_keyword(
     state: web::Data<AppState>
 ) -> Result<HttpResponse, Box<dyn Error>> {
     Ok(HttpResponse::Ok().json(""))

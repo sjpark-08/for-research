@@ -49,7 +49,7 @@ impl YoutubeVideoRepository for YoutubeVideoSqlxRepository {
                                                .and_then(|topics_vec| serde_json::to_string(topics_vec).ok());
         
         // 영상 정보 저장
-        let video_id =sqlx::query!(
+        let video_id = sqlx::query!(
             r#"
                 INSERT INTO youtube_videos (
                     video_id, published_at, channel_id, title, description, channel_title,

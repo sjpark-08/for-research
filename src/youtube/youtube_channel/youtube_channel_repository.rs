@@ -6,7 +6,7 @@ use crate::youtube::youtube_channel::youtube_channel_model::{YoutubeChannel, You
 #[automock]
 #[async_trait]
 pub trait YoutubeChannelRepository: Send + Sync {
-    async fn save_channel(&self, channel: YoutubeChannel) -> Result<(), Error>;
+    async fn save_channel(&self, channel: YoutubeChannel) -> Result<i64, Error>;
     
     async fn save_channel_keywords(&self, keywords: Vec<YoutubeChannelKeyword>) -> Result<(), Error>;
     
@@ -25,8 +25,26 @@ impl YoutubeChannelSqlxRepository {
 
 #[async_trait]
 impl YoutubeChannelRepository for YoutubeChannelSqlxRepository {
-    async fn save_channel(&self, channel: YoutubeChannel) -> Result<(), Error> {
+    async fn save_channel(&self, channel: YoutubeChannel) -> Result<i64, Error> {
+        let youtube_channel_id = sqlx::query!(
+            r#"
+                INSERT INTO youtube_channels (
+                    channel_id, channel_handle, channel_title, description, subscriber_count, view_count, video_count
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            "#,
+            channel.channel_id,
+            channel.channel_handle,
+            channel.channel_title,
+            channel.description,
+            channel.subscriber_count,
+            channel.view_count,
+            channel.video_count
+        )
+            .execute(&self.db_pool)
+            .await?
+            .last_insert_id() as i64;
         
+        Ok(youtube_channel_id)
     }
     
     async fn save_channel_keywords(&self, keywords: Vec<YoutubeChannelKeyword>) -> Result<(), Error> {
