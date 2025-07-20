@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use utoipa::{ToResponse, ToSchema};
 
 #[derive(Debug, Serialize, Clone, sqlx::FromRow)]
@@ -41,4 +41,14 @@ pub struct ChannelResponse {
 pub struct ChannelKeywordResponse {
     pub keyword_text: String,
     pub view_count: i64,
+}
+
+#[derive(Deserialize)]
+pub struct ChannelRequestQuery {
+    pub channel_id: String,
+}
+
+#[derive(Deserialize)]
+pub struct AnalyzeChannelRequestQuery {
+    pub channel_handle: String,
 }

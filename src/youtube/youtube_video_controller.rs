@@ -4,7 +4,7 @@ use mockall::Any;
 use utoipa::OpenApi;
 use crate::app_state::AppState;
 use crate::errors::ErrorResponse;
-use crate::youtube::youtube_channel::youtube_channel_model::{ChannelKeywordResponse, ChannelResponse};
+use crate::youtube::youtube_channel::youtube_channel_model::{AnalyzeChannelRequestQuery, ChannelKeywordResponse, ChannelRequestQuery, ChannelResponse};
 use crate::youtube::youtube_video::youtube_video_model::KeywordRankingResponse;
 
 #[derive(OpenApi)]
@@ -100,8 +100,10 @@ pub async fn get_channels(
 )]
 #[get("/channel/keyword")]
 pub async fn get_channels_keyword(
-    state: web::Data<AppState>
+    state: web::Data<AppState>,
+    query: web::Query<ChannelRequestQuery>
 ) -> Result<HttpResponse, Box<dyn Error>> {
+    let channel_id = &query.channel_id;
     Ok(HttpResponse::Ok().json(""))
 }
 
@@ -124,7 +126,9 @@ pub async fn get_channels_keyword(
 )]
 #[post("/channel/keyword")]
 pub async fn analyze_channels_keyword(
-    state: web::Data<AppState>
+    state: web::Data<AppState>,
+    query: web::Query<AnalyzeChannelRequestQuery>
 ) -> Result<HttpResponse, Box<dyn Error>> {
+    let channel_handle = &query.channel_handle;
     Ok(HttpResponse::Ok().json(""))
 }
