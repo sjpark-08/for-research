@@ -92,7 +92,7 @@ impl YoutubeDataAPIClient {
         query_params.push(("type", "channel".to_string()));
         query_params.push(("maxResults", "1".to_string()));
         query_params.push(("key", self.api_key.clone()));
-        
+        println!("시작");
         let response = self.http_client
             .get(url)
             .query(&query_params)
@@ -101,6 +101,13 @@ impl YoutubeDataAPIClient {
             .error_for_status()?
             .json::<ChannelSearchResponse>()
             .await?;
+        println!("종료");
+        // for item in response.items {
+        //     println!("{}", &item.snippet.custom_url);
+        //     if item.snippet.custom_url.eq_ignore_ascii_case(handle) {
+        //         return Ok(Some(item.id.channel_id))
+        //     }
+        // }
         
         let channel_id = response.items
             .into_iter()
@@ -110,11 +117,11 @@ impl YoutubeDataAPIClient {
         Ok(channel_id)
     }
     
-    pub async fn get_channel_details(&self, channel_id: &str) -> Result<Option<ChannelItem>, YoutubeDataAPIError> {
+    pub async fn get_channel_details_by_handle(&self, channel_handle: &str) -> Result<Option<ChannelItem>, YoutubeDataAPIError> {
         let url = "https://www.googleapis.com/youtube/v3/channels";
         let mut query_params: Vec<(&str, String)> = Vec::new();
         query_params.push(("part", "snippet,contentDetails,statistics".to_string()));
-        query_params.push(("id", channel_id.to_string()));
+        query_params.push(("forHandle", channel_handle.to_string()));
         query_params.push(("key", self.api_key.clone()));
         
         let response = self.http_client

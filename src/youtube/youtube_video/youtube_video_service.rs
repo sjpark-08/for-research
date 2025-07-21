@@ -51,7 +51,7 @@ impl YoutubeVideoService {
         let search_query = search_tags.join("|");
         let mut video_ids = Vec::new();
         
-        for day in 0..8 {
+        for day in 0..7 {
             let now = Utc::now();
             let end_time = now - TimeDelta::days(day);
             let start_time = now - TimeDelta::days(day + 1);
@@ -104,7 +104,7 @@ impl YoutubeVideoService {
     }
     
     async fn transform_and_save_video_data(&self, videos: &[VideoItem]) -> Result<(), Box<dyn Error>> {
-        for video_chunk in videos.chunks(50) {
+        for video_chunk in videos.chunks(40) {
             let videos_to_save: Vec<YoutubeVideo> = video_chunk
                 .iter()
                 .map(YoutubeVideo::from)

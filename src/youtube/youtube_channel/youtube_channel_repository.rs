@@ -10,8 +10,15 @@ pub trait YoutubeChannelRepository: Send + Sync {
     
     async fn save_channel_keywords(&self, keywords: Vec<YoutubeChannelKeyword>) -> Result<(), Error>;
     
-    async fn get_keywords_by_channel_id_order_by_view_count(&self, channel_id: &str) -> Result<Vec<YoutubeChannelKeyword>, Error>;
+    async fn channel_exists_by_handle(&self, handle: &str) -> Result<bool, Error>;
     
+    async fn find_all_channels(&self) -> Result<Vec<YoutubeChannel>, Error>;
+    
+    async fn find_keywords_by_channel_id_order_by_view_count(&self, channel_id: &str, limit: u32) -> Result<Vec<YoutubeChannelKeyword>, Error>;
+    
+    async fn update_channel_finished_by_id(&self, io: i64) -> Result<(), Error>;
+    
+    async fn delete_channel_not_finished(&self) -> Result<(), Error>;
 }
 
 #[derive(Clone)]
@@ -29,12 +36,14 @@ impl YoutubeChannelRepository for YoutubeChannelSqlxRepository {
         let youtube_channel_id = sqlx::query!(
             r#"
                 INSERT INTO youtube_channels (
-                    channel_id, channel_handle, channel_title, description, subscriber_count, view_count, video_count
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    channel_id, channel_handle, channel_title, thumbnail_url, description,
+                                              subscriber_count, view_count, video_count
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             "#,
             channel.channel_id,
             channel.channel_handle,
             channel.channel_title,
+            channel.thumbnail_url,
             channel.description,
             channel.subscriber_count,
             channel.view_count,
@@ -73,7 +82,39 @@ impl YoutubeChannelRepository for YoutubeChannelSqlxRepository {
         Ok(())
     }
     
-    async fn get_keywords_by_channel_id_order_by_view_count(&self, channel_id: &str) -> Result<Vec<YoutubeChannelKeyword>, Error> {
+    async fn channel_exists_by_handle(&self, handle: &str) -> Result<bool, Error> {
+        let result = sqlx::query!(
+            r#"
+                SELECT *
+                FROM youtube_channels
+                WHERE channel_handle = ?
+            "#,
+            handle
+        )
+            .fetch_optional(&self.db_pool)
+            .await?;
+        
+        Ok(result.is_some())
+    }
+    
+    async fn find_all_channels(&self) -> Result<Vec<YoutubeChannel>, Error> {
+        let channels = sqlx::query_as!(
+            YoutubeChannel,
+            r#"
+                SELECT id, channel_id, channel_handle, channel_title, thumbnail_url, description, subscriber_count,
+                       view_count, video_count,
+                       CAST(is_finished AS UNSIGNED) AS "is_finished: bool", created_at, updated_at
+                FROM youtube_channels
+                ORDER BY channel_title
+            "#
+        )
+            .fetch_all(&self.db_pool)
+            .await?;
+        
+        Ok(channels)
+    }
+    
+    async fn find_keywords_by_channel_id_order_by_view_count(&self, channel_id: &str, limit: u32) -> Result<Vec<YoutubeChannelKeyword>, Error> {
         let keywords = sqlx::query_as!(
             YoutubeChannelKeyword,
             r#"
@@ -81,12 +122,44 @@ impl YoutubeChannelRepository for YoutubeChannelSqlxRepository {
                 FROM youtube_channel_keywords
                 WHERE youtube_channel_id = ?
                 ORDER BY view_count DESC
+                LIMIT ?
             "#,
-            channel_id
+            channel_id,
+            limit
         )
             .fetch_all(&self.db_pool)
             .await?;
         
         Ok(keywords)
+    }
+    
+    async fn update_channel_finished_by_id(&self, id: i64) -> Result<(), Error> {
+        sqlx::query!(
+            r#"
+                UPDATE youtube_channels
+                SET is_finished = true
+                WHERE id = ?
+            "#,
+            id
+        )
+            .execute(&self.db_pool)
+            .await?;
+        
+        Ok(())
+    }
+    
+    async fn delete_channel_not_finished(&self) -> Result<(), Error> {
+        sqlx::query!(
+            r#"
+                DELETE
+                FROM youtube_channels
+                WHERE is_finished = false
+                AND created_at < NOW() - INTERVAL 1 HOUR 
+            "#
+        )
+            .execute(&self.db_pool)
+            .await?;
+        
+        Ok(())
     }
 }

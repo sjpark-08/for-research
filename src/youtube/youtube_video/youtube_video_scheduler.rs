@@ -8,11 +8,12 @@ pub fn init_scheduler(app_state: AppState) {
         let asia_seoul: Tz = "Asia/Seoul".parse().expect("Invalid timezone specified");
         let mut scheduler = AsyncScheduler::with_tz(asia_seoul);
         
+        let app_state_for_daily_task = app_state.clone();
         scheduler
             .every(1.day())
-            .at("18:03")
+            .at("12:00")
             .run(move || {
-                let app_state_clone = app_state.clone();
+                let app_state_clone = app_state_for_daily_task.clone();
                 async move {
                     match app_state_clone
                         .youtube_video_service
@@ -29,9 +30,28 @@ pub fn init_scheduler(app_state: AppState) {
                 }
             });
         
+        let app_state_for_cleanup = app_state.clone();
+        scheduler
+            .every(10.minutes())
+            .run(move || {
+               let app_state_clone = app_state_for_cleanup.clone();
+                async move {
+                    match app_state_clone
+                        .youtube_channel_service
+                        .cleanup_stale_channels()
+                        .await
+                    { 
+                        Ok(_) => {},
+                        Err(e) => {
+                            eprintln!("[스케줄러] 클린 업 실패 {}", e);
+                        }
+                    }
+                }
+            });
+        
         loop {
             scheduler.run_pending().await;
-            tokio::time::sleep(Duration::from_secs(1)).await;
+            tokio::time::sleep(Duration::from_secs(60)).await;
         }
     });
 }

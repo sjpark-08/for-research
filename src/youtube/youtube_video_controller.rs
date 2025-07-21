@@ -13,7 +13,7 @@ use crate::youtube::youtube_video::youtube_video_model::KeywordRankingResponse;
         get_daily_keyword_rankings,
         get_channels,
         get_channels_keyword,
-        analyze_channels_keyword
+        request_analyze_channels_keyword
     ),
     components(),
     tags(
@@ -26,7 +26,7 @@ pub fn youtube_api(config: &mut web::ServiceConfig) {
     config.service(get_daily_keyword_rankings)
         .service(get_channels)
         .service(get_channels_keyword)
-        .service(analyze_channels_keyword);
+        .service(request_analyze_channels_keyword);
 }
 
 #[utoipa::path(
@@ -61,7 +61,7 @@ pub async fn get_daily_keyword_rankings(
     responses(
         (
             status = 200,
-            body = ChannelResponse,
+            body = Vec<ChannelResponse>,
             description = "get youtube channels",
             content_type = "application/json"
         ),
@@ -77,16 +77,20 @@ pub async fn get_daily_keyword_rankings(
 pub async fn get_channels(
     state: web::Data<AppState>
 ) -> Result<HttpResponse, Box<dyn Error>> {
-    Ok(HttpResponse::Ok().json(""))
+    let response = state.youtube_channel_service.get_youtube_channels().await?;
+    Ok(HttpResponse::Ok().json(response))
 }
 
 #[utoipa::path(
     get,
     path = "/channel/keyword",
+    params(
+        ("channel_id" = String, Query, description = "channel's id")
+    ),
     responses(
         (
             status = 200,
-            body = ChannelKeywordResponse,
+            body = Vec<ChannelKeywordResponse>,
             description = "get youtube channels' keywords",
             content_type = "application/json"
         ),
@@ -104,15 +108,19 @@ pub async fn get_channels_keyword(
     query: web::Query<ChannelRequestQuery>
 ) -> Result<HttpResponse, Box<dyn Error>> {
     let channel_id = &query.channel_id;
-    Ok(HttpResponse::Ok().json(""))
+    let response = state.youtube_channel_service.get_youtube_channel_keywords(channel_id).await?;
+    Ok(HttpResponse::Ok().json(response))
 }
 
 #[utoipa::path(
     post,
     path = "/channel/keyword",
+    params(
+        ("channel_handle" = String, Query, description = "channel's handle")
+    ),
     responses(
         (
-            status = 200,
+            status = 202,
             description = "post analyze youtube channels' keywords",
             content_type = "application/json"
         ),
@@ -125,10 +133,11 @@ pub async fn get_channels_keyword(
     tags = ["Youtube Data"]
 )]
 #[post("/channel/keyword")]
-pub async fn analyze_channels_keyword(
+pub async fn request_analyze_channels_keyword(
     state: web::Data<AppState>,
     query: web::Query<AnalyzeChannelRequestQuery>
 ) -> Result<HttpResponse, Box<dyn Error>> {
-    let channel_handle = &query.channel_handle;
-    Ok(HttpResponse::Ok().json(""))
+    let channel_handle = query.channel_handle.clone();
+    let response = state.youtube_channel_service.request_analyze_youtube_channel_keywords(channel_handle).await?;
+    Ok(HttpResponse::Accepted().json(response))
 }

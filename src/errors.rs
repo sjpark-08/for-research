@@ -4,6 +4,7 @@ use serde::Serialize;
 use thiserror::Error;
 use utoipa::ToSchema;
 use crate::user::user_error::UserError;
+use crate::youtube::youtube_channel::youtube_channel_error::YoutubeChannelError;
 use crate::youtube::youtube_data_api::youtube_data_api_error::YoutubeDataAPIError;
 
 #[derive(Error, Debug)]
@@ -16,6 +17,9 @@ pub enum AppError {
 
     #[error(transparent)]
     YoutubeDataAPI(#[from] YoutubeDataAPIError),
+    
+    #[error(transparent)]
+    YoutubeChannel(#[from] YoutubeChannelError),
 }
 
 #[derive(Serialize, ToSchema)]
@@ -37,7 +41,12 @@ impl ResponseError for AppError {
             AppError::YoutubeDataAPI(e) => match e {
                 YoutubeDataAPIError::RequestError(_) => StatusCode::INTERNAL_SERVER_ERROR,
                 YoutubeDataAPIError::UploadPlayListNotFound => StatusCode::NOT_FOUND,
-            } 
+            },
+            AppError::YoutubeChannel(e) => match e {   
+                YoutubeChannelError::ChannelNotFound(_) => StatusCode::NOT_FOUND,
+                YoutubeChannelError::ChannelDuplicated(_) => StatusCode::CONFLICT,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            }
         }
     }
 
