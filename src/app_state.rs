@@ -1,9 +1,12 @@
 use std::sync::Arc;
+use redis::RedisConnectionInfo;
 use sqlx::mysql::MySqlPoolOptions;
+use crate::auth::auth_service::AuthService;
 use crate::user::user_service::UserService;
 use crate::config::Config;
 use crate::gemini::gemini_api_util::GeminiAPIClient;
-use crate::user::user_repository::UserSqlxRepository;
+use crate::redis::redis_repository::RedisRepository;
+use crate::user::user_repository::{UserRepository, UserSqlxRepository};
 use crate::youtube::youtube_channel::youtube_channel_repository::YoutubeChannelSqlxRepository;
 use crate::youtube::youtube_channel::youtube_channel_service::YoutubeChannelService;
 use crate::youtube::youtube_data_api::youtube_data_api_util::YoutubeDataAPIClient;
@@ -14,6 +17,7 @@ use crate::youtube::youtube_video::youtube_video_service::YoutubeVideoService;
 #[derive(Clone)]
 pub struct AppState {
     pub user_service: UserService,
+    pub auth_service: AuthService,
     pub youtube_video_service: YoutubeVideoService,
     pub youtube_channel_service: YoutubeChannelService,
 }
@@ -26,8 +30,17 @@ impl AppState {
             .await
             .expect("Failed to connect to database");
         
-        let user_repository = UserSqlxRepository::new(db_pool.clone());
-        let user_service = UserService::new(Arc::new(user_repository));
+        let redis_client = redis::Client::open(config.redis_url.as_str())
+            .expect("Failed to open redis client");
+        
+        let redis_pool = r2d2::Pool::builder()
+            .build(redis_client)
+            .expect("Failed to build redis pool");
+        
+        let redis_repository = Arc::new(RedisRepository::new(redis_pool));
+        
+        let user_repository: Arc<dyn UserRepository> = Arc::new(UserSqlxRepository::new(db_pool.clone()));
+        let user_service = UserService::new(Arc::clone(&user_repository));
         
         let gemini_api_client = Arc::new(GeminiAPIClient::new(&config));
         
@@ -49,8 +62,14 @@ impl AppState {
             Arc::clone(&gemini_api_client),
         );
         
+        let auth_service = AuthService::new(
+            Arc::clone(&user_repository),
+            redis_repository,
+        );
+        
         Self {
             user_service,
+            auth_service,
             youtube_video_service,
             youtube_channel_service,
         }

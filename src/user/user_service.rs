@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use bcrypt::{hash, DEFAULT_COST};
 use uuid::Uuid;
 use crate::user::user_error::UserError;
 use crate::user::user_model::{User, UserCreateRequest, UserResponse, UserUpdateRequest};
@@ -41,10 +42,12 @@ impl UserService {
             uuid = Uuid::new_v4();
         }
         
+        let hashed_password = hash(request.password, DEFAULT_COST).unwrap();
+        
         let user = User {
             id: Default::default(),
             email: request.email,
-            password: request.password,
+            password: hashed_password,
             username: request.username,
             public_id: uuid.to_string(),
             created_at: Default::default(),
@@ -68,6 +71,7 @@ mod tests {
     use crate::user::user_model::{User};
     use mockall::predicate::*;
     use std::sync::Arc;
+    use bcrypt::verify;
     use chrono::Utc;
 
     #[tokio::test]
@@ -85,7 +89,7 @@ mod tests {
         let user = User {
             id: Default::default(),
             email: email.clone(),
-            password: password.clone(),
+            password: hash(password.clone(), DEFAULT_COST).unwrap(),
             username: username.clone(),
             public_id: uuid.clone(),
             created_at: Default::default(),
@@ -100,14 +104,13 @@ mod tests {
         
         user_repository.expect_create()
             .withf(move |user_arg: &User| {
-                user_arg.email == email && user_arg.password == password && user_arg.username == username
+                user_arg.email == email && user_arg.username == username && verify(password.clone(), &user_arg.password).unwrap()
             })
             .times(1)
             .returning(|_| Ok(1));
 
         let user_service = UserService::new(Arc::new(user_repository));
-  
-
+        
         let result = user_service.create_user(user_create_request).await;
         assert!(result.is_ok());
     }

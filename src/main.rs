@@ -4,6 +4,8 @@ mod config;
 mod errors;
 mod youtube;
 mod gemini;
+mod auth;
+mod redis;
 
 use actix_web::{web, App, HttpServer};
 use utoipa::OpenApi;
@@ -11,12 +13,17 @@ use utoipa_swagger_ui::SwaggerUi;
 use crate::app_state::AppState;
 use crate::user::user_controller::UserApi;
 use youtube::youtube_video_controller::YoutubeApi;
+use crate::auth::auth_controller::AuthApi;
 
 #[derive(OpenApi)]
 #[openapi(
     nest(
         (path = "/api/v1/user", api = UserApi),
+        (path = "/api/v1/auth", api = AuthApi),
         (path = "/api/v1/data/youtube", api = YoutubeApi),
+    ),
+    components(
+        schemas(),
     ),
     info(
         title = "Actix-Web API",
@@ -41,7 +48,8 @@ async fn main() -> std::io::Result<()>{
                     .url("/api-docs/openapi.json", ApiDoc::openapi())
             )
             .service(web::scope("/api/v1/user").configure(user::user_controller::user_api))
-            .service(web::scope("api/v1/data/youtube").configure(youtube::youtube_video_controller::youtube_api))
+            .service(web::scope("/api/v1/auth").configure(auth::auth_controller::auth_api))
+            .service(web::scope("/api/v1/data/youtube").configure(youtube::youtube_video_controller::youtube_api))
     })
         .bind(&config.server_address)?
         .run()

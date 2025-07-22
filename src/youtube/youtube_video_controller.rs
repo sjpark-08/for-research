@@ -1,8 +1,8 @@
 use std::error::Error;
 use actix_web::{get, post, web, HttpResponse};
-use mockall::Any;
 use utoipa::OpenApi;
 use crate::app_state::AppState;
+use crate::auth::auth_model::AuthenticatedUser;
 use crate::errors::ErrorResponse;
 use crate::youtube::youtube_channel::youtube_channel_model::{AnalyzeChannelRequestQuery, ChannelKeywordResponse, ChannelRequestQuery, ChannelResponse};
 use crate::youtube::youtube_video::youtube_video_model::KeywordRankingResponse;
@@ -49,7 +49,8 @@ pub fn youtube_api(config: &mut web::ServiceConfig) {
 )]
 #[get("/keyword/rankings")]
 pub async fn get_daily_keyword_rankings(
-    state: web::Data<AppState>
+    state: web::Data<AppState>,
+    auth_user: AuthenticatedUser
 ) -> Result<HttpResponse, Box<dyn Error>> {
     let response = state.youtube_video_service.get_daily_rankings().await?;
     Ok(HttpResponse::Ok().json(response))
@@ -75,7 +76,8 @@ pub async fn get_daily_keyword_rankings(
 )]
 #[get("/channel")]
 pub async fn get_channels(
-    state: web::Data<AppState>
+    state: web::Data<AppState>,
+    auth_user: AuthenticatedUser
 ) -> Result<HttpResponse, Box<dyn Error>> {
     let response = state.youtube_channel_service.get_youtube_channels().await?;
     Ok(HttpResponse::Ok().json(response))
@@ -105,7 +107,8 @@ pub async fn get_channels(
 #[get("/channel/keyword")]
 pub async fn get_channels_keyword(
     state: web::Data<AppState>,
-    query: web::Query<ChannelRequestQuery>
+    query: web::Query<ChannelRequestQuery>,
+    auth_user: AuthenticatedUser
 ) -> Result<HttpResponse, Box<dyn Error>> {
     let channel_id = &query.channel_id;
     let response = state.youtube_channel_service.get_youtube_channel_keywords(channel_id).await?;
@@ -135,7 +138,8 @@ pub async fn get_channels_keyword(
 #[post("/channel/keyword")]
 pub async fn request_analyze_channels_keyword(
     state: web::Data<AppState>,
-    query: web::Query<AnalyzeChannelRequestQuery>
+    query: web::Query<AnalyzeChannelRequestQuery>,
+    auth_user: AuthenticatedUser
 ) -> Result<HttpResponse, Box<dyn Error>> {
     let channel_handle = query.channel_handle.clone();
     let response = state.youtube_channel_service.request_analyze_youtube_channel_keywords(channel_handle).await?;

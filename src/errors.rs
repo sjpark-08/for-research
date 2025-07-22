@@ -3,6 +3,7 @@ use actix_web::{HttpResponse, ResponseError};
 use serde::Serialize;
 use thiserror::Error;
 use utoipa::ToSchema;
+use crate::auth::auth_error::AuthError;
 use crate::user::user_error::UserError;
 use crate::youtube::youtube_channel::youtube_channel_error::YoutubeChannelError;
 use crate::youtube::youtube_data_api::youtube_data_api_error::YoutubeDataAPIError;
@@ -20,6 +21,9 @@ pub enum AppError {
     
     #[error(transparent)]
     YoutubeChannel(#[from] YoutubeChannelError),
+    
+    #[error(transparent)]
+    Auth(#[from] AuthError)
 }
 
 #[derive(Serialize, ToSchema)]
@@ -45,6 +49,11 @@ impl ResponseError for AppError {
             AppError::YoutubeChannel(e) => match e {   
                 YoutubeChannelError::ChannelNotFound(_) => StatusCode::NOT_FOUND,
                 YoutubeChannelError::ChannelDuplicated(_) => StatusCode::CONFLICT,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            },
+            AppError::Auth(e) => match e {
+                AuthError::Unauthorized => StatusCode::UNAUTHORIZED,
+                AuthError::UserNotFound => StatusCode::NOT_FOUND,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             }
         }
