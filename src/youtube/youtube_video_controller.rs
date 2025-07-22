@@ -3,6 +3,7 @@ use actix_web::{get, post, web, HttpResponse};
 use utoipa::OpenApi;
 use crate::app_state::AppState;
 use crate::auth::auth_model::AuthenticatedUser;
+use crate::common::pagination::{Page, PaginationQuery};
 use crate::errors::ErrorResponse;
 use crate::youtube::youtube_channel::youtube_channel_model::{AnalyzeChannelRequestQuery, ChannelKeywordResponse, ChannelRequestQuery, ChannelResponse};
 use crate::youtube::youtube_video::youtube_video_model::KeywordRankingResponse;
@@ -59,10 +60,13 @@ pub async fn get_daily_keyword_rankings(
 #[utoipa::path(
     get,
     path = "/channel",
+    params(
+        PaginationQuery
+    ),
     responses(
         (
             status = 200,
-            body = Vec<ChannelResponse>,
+            body = Page<ChannelResponse>,
             description = "get youtube channels",
             content_type = "application/json"
         ),
@@ -77,9 +81,10 @@ pub async fn get_daily_keyword_rankings(
 #[get("/channel")]
 pub async fn get_channels(
     state: web::Data<AppState>,
+    query: web::Query<PaginationQuery>,
     auth_user: AuthenticatedUser
 ) -> Result<HttpResponse, Box<dyn Error>> {
-    let response = state.youtube_channel_service.get_youtube_channels().await?;
+    let response = state.youtube_channel_service.get_youtube_channels(query.into_inner()).await?;
     Ok(HttpResponse::Ok().json(response))
 }
 

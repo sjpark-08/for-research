@@ -12,7 +12,9 @@ pub trait YoutubeChannelRepository: Send + Sync {
     
     async fn channel_exists_by_handle(&self, handle: &str) -> Result<bool, Error>;
     
-    async fn find_all_channels(&self) -> Result<Vec<YoutubeChannel>, Error>;
+    async fn find_all_channels(&self, limit: u32, offset: u32) -> Result<Vec<YoutubeChannel>, Error>;
+    
+    async fn count_all_channels(&self) -> Result<i64, Error>;
     
     async fn find_keywords_by_channel_id_order_by_view_count(&self, channel_id: &str, limit: u32) -> Result<Vec<YoutubeChannelKeyword>, Error>;
     
@@ -97,7 +99,7 @@ impl YoutubeChannelRepository for YoutubeChannelSqlxRepository {
         Ok(result.is_some())
     }
     
-    async fn find_all_channels(&self) -> Result<Vec<YoutubeChannel>, Error> {
+    async fn find_all_channels(&self, limit: u32, offset: u32) -> Result<Vec<YoutubeChannel>, Error> {
         let channels = sqlx::query_as!(
             YoutubeChannel,
             r#"
@@ -106,12 +108,28 @@ impl YoutubeChannelRepository for YoutubeChannelSqlxRepository {
                        CAST(is_finished AS UNSIGNED) AS "is_finished: bool", created_at, updated_at
                 FROM youtube_channels
                 ORDER BY channel_title
-            "#
+                LIMIT ? OFFSET ?
+            "#,
+            limit,
+            offset
         )
             .fetch_all(&self.db_pool)
             .await?;
         
         Ok(channels)
+    }
+    
+    async fn count_all_channels(&self) -> Result<i64, Error> {
+        let row = sqlx::query!(
+            r#"
+                SELECT COUNT(*) as count
+                FROM youtube_channels
+            "#
+        )
+            .fetch_one(&self.db_pool)
+            .await?;
+        
+        Ok(row.count)
     }
     
     async fn find_keywords_by_channel_id_order_by_view_count(&self, channel_id: &str, limit: u32) -> Result<Vec<YoutubeChannelKeyword>, Error> {
@@ -154,7 +172,7 @@ impl YoutubeChannelRepository for YoutubeChannelSqlxRepository {
                 DELETE
                 FROM youtube_channels
                 WHERE is_finished = false
-                AND created_at < NOW() - INTERVAL 1 HOUR 
+                AND created_at < NOW() - INTERVAL 1 HOUR
             "#
         )
             .execute(&self.db_pool)

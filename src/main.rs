@@ -6,6 +6,7 @@ mod youtube;
 mod gemini;
 mod auth;
 mod redis;
+mod common;
 
 use actix_web::{web, App, HttpServer};
 use utoipa::OpenApi;

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::error::Error;
 use std::sync::Arc;
+use crate::common::pagination::{Page, PaginationQuery};
 use crate::gemini::gemini_api_util::GeminiAPIClient;
 use crate::youtube::youtube_channel::youtube_channel_error::YoutubeChannelError;
 use crate::youtube::youtube_channel::youtube_channel_model::{ChannelKeywordResponse, ChannelResponse, YoutubeChannel, YoutubeChannelKeyword};
@@ -119,14 +120,27 @@ impl YoutubeChannelService {
         Ok(())
     }
     
-    pub async fn get_youtube_channels(&self) -> Result<Vec<ChannelResponse>, Box<dyn Error>> {
-        let youtube_channels = self.youtube_channel_repository.find_all_channels().await?;
+    pub async fn get_youtube_channels(&self, query: PaginationQuery) -> Result<Page<ChannelResponse>, Box<dyn Error>> {
+        let limit = query.size;
+        let offset = query.page * query.size;
+        
+        let total_items = self.youtube_channel_repository.count_all_channels().await?;
+        
+        let youtube_channels = self.youtube_channel_repository.find_all_channels(limit, offset).await?;
         let response = youtube_channels
             .iter()
             .map(ChannelResponse::from)
             .collect();
         
-        Ok(response)
+        let total_pages = (total_items as f64 / limit as f64).ceil() as u32;
+        
+        Ok(Page {
+            items: response,
+            page: query.page,
+            size: query.size,
+            total_items,
+            total_pages
+        })
     }
     
     pub async fn get_youtube_channel_keywords(&self, channel_id: &str) -> Result<Vec<ChannelKeywordResponse>, Box<dyn Error>> {
