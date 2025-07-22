@@ -1,6 +1,6 @@
 use crate::app_state::AppState;
 use crate::errors::{AppError, ErrorResponse};
-use crate::user::user_model::{UserCreate, UserResponse, UserUpdate};
+use crate::user::user_model::{UserCreateRequest, UserResponse, UserUpdateRequest};
 use actix_web::{get, post, put, web, HttpResponse};
 use utoipa::OpenApi;
 
@@ -67,7 +67,7 @@ pub async fn get_user(
 #[post("")]
 pub async fn create_user(
     state: web::Data<AppState>,
-    form: web::Json<UserCreate>,
+    form: web::Json<UserCreateRequest>,
 ) -> Result<HttpResponse, AppError> {
     let response = state.user_service.create_user(form.into_inner()).await?;
     Ok(HttpResponse::Ok().json(response))
@@ -87,7 +87,7 @@ pub async fn create_user(
 #[put("")]
 pub async fn update_user(
     state: web::Data<AppState>,
-    form: web::Json<UserUpdate>,
+    form: web::Json<UserUpdateRequest>,
 ) -> Result<HttpResponse, AppError> {
     let result = state.user_service.update_user(form.into_inner()).await?;
     Ok(HttpResponse::Ok().json(result))

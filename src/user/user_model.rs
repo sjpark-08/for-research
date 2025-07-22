@@ -2,25 +2,26 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::{ToResponse, ToSchema};
 
-#[derive(Serialize, Debug, Clone, sqlx::FromRow)]
+#[derive(Serialize, Debug, Clone, sqlx::FromRow, PartialEq)]
 pub struct User {
     pub id: i64,
     pub email: String,
     pub password: String,
     pub username: String,
+    pub public_id: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Deserialize, Debug, Clone, ToSchema)]
-pub struct UserCreate {
+pub struct UserCreateRequest {
     pub email: String,
     pub password: String,
     pub username: String,
 }
 
 #[derive(Deserialize, Debug, Clone, ToSchema)]
-pub struct UserUpdate {
+pub struct UserUpdateRequest {
     pub id: i64,
     pub email: String,
     pub username: String,

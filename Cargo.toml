@@ -29,3 +29,4 @@ chrono-tz = "0.10.4"
 clokwerk = { version = "0.4.0", features = ["async"]}
 env_logger = "0.11.8"
 tokio-retry = "0.3.0"
+uuid = { version = "1.17.0", features = ["v4", "serde"]}

@@ -1,6 +1,7 @@
 use std::sync::Arc;
+use uuid::Uuid;
 use crate::user::user_error::UserError;
-use crate::user::user_model::{UserCreate, UserResponse, UserUpdate};
+use crate::user::user_model::{User, UserCreateRequest, UserResponse, UserUpdateRequest};
 use crate::user::user_repository::UserRepository;
 
 #[derive(Clone)]
@@ -26,20 +27,35 @@ impl UserService {
             .map(|user| user.into())
     }
     
-    pub async fn create_user(&self, user_create: UserCreate) -> Result<(), UserError> {
-        if self.user_repository.email_exists(&user_create.email).await? {
+    pub async fn create_user(&self, request: UserCreateRequest) -> Result<(), UserError> {
+        if self.user_repository.email_exists(&request.email).await? {
             return Err(UserError::EmailDuplicated)
         }
 
-        if self.user_repository.username_exists(&user_create.username).await? {
+        if self.user_repository.username_exists(&request.username).await? {
             return Err(UserError::NameDuplicated)
         }
+        
+        let mut uuid = Uuid::new_v4();
+        if self.user_repository.public_id_exists(&uuid.to_string()).await? {
+            uuid = Uuid::new_v4();
+        }
+        
+        let user = User {
+            id: Default::default(),
+            email: request.email,
+            password: request.password,
+            username: request.username,
+            public_id: uuid.to_string(),
+            created_at: Default::default(),
+            updated_at: Default::default(),
+        };
 
-        let result = self.user_repository.create(&user_create.email, &user_create.username, &user_create.password).await?;
+        let result = self.user_repository.create(user).await?;
         Ok(())
     }
     
-    pub async fn update_user(&self, user_update: UserUpdate) -> Result<(), UserError> {
+    pub async fn update_user(&self, user_update: UserUpdateRequest) -> Result<(), UserError> {
         let result = self.user_repository.update(user_update.id, &user_update.email, &user_update.username).await?;
         Ok(())
     }
@@ -49,7 +65,7 @@ impl UserService {
 mod tests {
     use super::*;
     use crate::user::user_repository::MockUserRepository;
-    use crate::user::user_model::{User, UserCreate};
+    use crate::user::user_model::{User};
     use mockall::predicate::*;
     use std::sync::Arc;
     use chrono::Utc;
@@ -59,24 +75,40 @@ mod tests {
         let mut user_repository = MockUserRepository::new();
         user_repository.expect_email_exists().returning(|_| Ok(false));
         user_repository.expect_username_exists().returning(|_| Ok(false));
+        user_repository.expect_public_id_exists().returning(|_| Ok(false));
 
         let email = "test@example.com".to_string();
         let password = "test".to_string();
         let username = "test".to_string();
-
-        user_repository.expect_create()
-            .with(eq(email.clone()), eq(password.clone()), eq(username.clone()))
-            .times(1)
-            .returning(|_, _, _| Ok(1));
-
-        let user_service = UserService::new(Arc::new(user_repository));
-        let user_create = UserCreate {
+        let uuid = Uuid::new_v4().to_string();
+        
+        let user = User {
+            id: Default::default(),
+            email: email.clone(),
+            password: password.clone(),
+            username: username.clone(),
+            public_id: uuid.clone(),
+            created_at: Default::default(),
+            updated_at: Default::default(),
+        };
+        
+        let user_create_request = UserCreateRequest {
             email: email.clone(),
             password: password.clone(),
             username: username.clone(),
         };
+        
+        user_repository.expect_create()
+            .withf(move |user_arg: &User| {
+                user_arg.email == email && user_arg.password == password && user_arg.username == username
+            })
+            .times(1)
+            .returning(|_| Ok(1));
 
-        let result = user_service.create_user(user_create).await;
+        let user_service = UserService::new(Arc::new(user_repository));
+  
+
+        let result = user_service.create_user(user_create_request).await;
         assert!(result.is_ok());
     }
 
@@ -96,7 +128,7 @@ mod tests {
         user_repository.expect_create().never();
 
         let user_service = UserService::new(Arc::new(user_repository));
-        let user_create = UserCreate {
+        let user_create = UserCreateRequest {
             email: email.clone(),
             password: password.clone(),
             username: username.clone(),
@@ -122,7 +154,7 @@ mod tests {
         user_repository.expect_create().never();
         
         let user_service = UserService::new(Arc::new(user_repository));
-        let user_create = UserCreate {
+        let user_create = UserCreateRequest {
             email: email.clone(),
             password: password.clone(),
             username: username.clone(),
@@ -144,6 +176,7 @@ mod tests {
             email: email.to_string(),
             password: password.to_string(),
             username: name.to_string(),
+            public_id: Default::default(),
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
