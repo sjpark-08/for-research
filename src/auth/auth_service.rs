@@ -128,7 +128,7 @@ impl AuthService {
             .await?
             .ok_or(AuthError::Unauthorized)?;
         
-        if existing_refresh_token != token_data.claims.sub {
+        if existing_refresh_token != refresh_token {
             return Err(AuthError::Unauthorized);
         }
         

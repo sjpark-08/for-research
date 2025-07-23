@@ -9,15 +9,34 @@ mod redis;
 mod common;
 
 use actix_web::{web, App, HttpServer};
-use utoipa::OpenApi;
+use utoipa::{Modify, OpenApi};
+use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa_swagger_ui::SwaggerUi;
 use crate::app_state::AppState;
 use crate::user::user_controller::UserApi;
 use youtube::youtube_video_controller::YoutubeApi;
 use crate::auth::auth_controller::AuthApi;
 
+struct SecurityAddon;
+
+impl Modify for SecurityAddon {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        if let Some(components) = openapi.components.as_mut() {
+            components.add_security_scheme(
+                "bearerAuth",
+                SecurityScheme::Http(
+                    HttpBuilder::new()
+                        .scheme(HttpAuthScheme::Bearer)
+                        .bearer_format("JWT")
+                        .build(),
+                ),
+            )
+        }
+    }
+}
 #[derive(OpenApi)]
 #[openapi(
+    modifiers(&SecurityAddon),
     nest(
         (path = "/api/v1/user", api = UserApi),
         (path = "/api/v1/auth", api = AuthApi),

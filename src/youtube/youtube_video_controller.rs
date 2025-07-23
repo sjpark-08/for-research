@@ -33,6 +33,9 @@ pub fn youtube_api(config: &mut web::ServiceConfig) {
 #[utoipa::path(
     get,
     path = "/keyword/rankings",
+    security(
+        ("bearerAuth" = [])
+    ),
     responses(
         (
             status = 200,
@@ -60,6 +63,9 @@ pub async fn get_daily_keyword_rankings(
 #[utoipa::path(
     get,
     path = "/channel",
+    security(
+        ("bearerAuth" = [])
+    ),
     params(
         PaginationQuery
     ),
@@ -91,6 +97,9 @@ pub async fn get_channels(
 #[utoipa::path(
     get,
     path = "/channel/keyword",
+    security(
+        ("bearerAuth" = [])
+    ),
     params(
         ("channel_id" = String, Query, description = "channel's id")
     ),
@@ -123,6 +132,9 @@ pub async fn get_channels_keyword(
 #[utoipa::path(
     post,
     path = "/channel/keyword",
+    security(
+        ("bearerAuth" = [])
+    ),
     params(
         ("channel_handle" = String, Query, description = "channel's handle")
     ),

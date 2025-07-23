@@ -48,6 +48,9 @@ pub async fn login(
 #[utoipa::path(
     post,
     path = "/logout",
+    security(
+        ("bearerAuth" = [])
+    ),
     responses(
         (
             status = 200,
