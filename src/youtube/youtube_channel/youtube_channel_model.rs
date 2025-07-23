@@ -49,7 +49,7 @@ pub struct ChannelKeywordResponse {
 
 #[derive(Deserialize)]
 pub struct ChannelRequestQuery {
-    pub channel_id: String,
+    pub channel_handle: String,
 }
 
 #[derive(Deserialize)]

@@ -22,6 +22,9 @@ pub enum AuthError {
     
     #[error("JWT 오류: {0}")]
     JWTError(#[from] jsonwebtoken::errors::Error),
+    
+    #[error("비밀번호가 일치하지 않습니다.")]
+    InvalidPassword,
 }
 
 impl ResponseError for AuthError {

@@ -54,6 +54,7 @@ impl ResponseError for AppError {
             AppError::Auth(e) => match e {
                 AuthError::Unauthorized => StatusCode::UNAUTHORIZED,
                 AuthError::UserNotFound => StatusCode::NOT_FOUND,
+                AuthError::InvalidPassword => StatusCode::BAD_REQUEST,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             }
         }

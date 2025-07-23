@@ -4,7 +4,7 @@ use utoipa::OpenApi;
 use crate::app_state::AppState;
 use crate::auth::auth_model::AuthenticatedUser;
 use crate::common::pagination::{Page, PaginationQuery};
-use crate::errors::ErrorResponse;
+use crate::errors::{AppError, ErrorResponse};
 use crate::youtube::youtube_channel::youtube_channel_model::{AnalyzeChannelRequestQuery, ChannelKeywordResponse, ChannelRequestQuery, ChannelResponse};
 use crate::youtube::youtube_video::youtube_video_model::KeywordRankingResponse;
 
@@ -33,10 +33,13 @@ pub fn youtube_api(config: &mut web::ServiceConfig) {
 #[utoipa::path(
     get,
     path = "/keyword/rankings",
+    security(
+        ("bearerAuth" = [])
+    ),
     responses(
         (
             status = 200,
-            body = KeywordRankingResponse,
+            body = Vec<KeywordRankingResponse>,
             description = "get youtube keyword rankings",
             content_type = "application/json"
         ),
@@ -60,6 +63,9 @@ pub async fn get_daily_keyword_rankings(
 #[utoipa::path(
     get,
     path = "/channel",
+    security(
+        ("bearerAuth" = [])
+    ),
     params(
         PaginationQuery
     ),
@@ -91,8 +97,11 @@ pub async fn get_channels(
 #[utoipa::path(
     get,
     path = "/channel/keyword",
+    security(
+        ("bearerAuth" = [])
+    ),
     params(
-        ("channel_id" = String, Query, description = "channel's id")
+        ("channel_handle" = String, Query, description = "channel's handle")
     ),
     responses(
         (
@@ -115,14 +124,17 @@ pub async fn get_channels_keyword(
     query: web::Query<ChannelRequestQuery>,
     auth_user: AuthenticatedUser
 ) -> Result<HttpResponse, Box<dyn Error>> {
-    let channel_id = &query.channel_id;
-    let response = state.youtube_channel_service.get_youtube_channel_keywords(channel_id).await?;
+    let channel_handle = &query.channel_handle;
+    let response = state.youtube_channel_service.get_youtube_channel_keywords(channel_handle).await?;
     Ok(HttpResponse::Ok().json(response))
 }
 
 #[utoipa::path(
     post,
     path = "/channel/keyword",
+    security(
+        ("bearerAuth" = [])
+    ),
     params(
         ("channel_handle" = String, Query, description = "channel's handle")
     ),
@@ -145,7 +157,7 @@ pub async fn request_analyze_channels_keyword(
     state: web::Data<AppState>,
     query: web::Query<AnalyzeChannelRequestQuery>,
     auth_user: AuthenticatedUser
-) -> Result<HttpResponse, Box<dyn Error>> {
+) -> Result<HttpResponse, AppError> {
     let channel_handle = query.channel_handle.clone();
     let response = state.youtube_channel_service.request_analyze_youtube_channel_keywords(channel_handle).await?;
     Ok(HttpResponse::Accepted().json(response))

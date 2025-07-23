@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::sync::Arc;
 use crate::common::pagination::{Page, PaginationQuery};
+use crate::errors::AppError;
 use crate::gemini::gemini_api_util::GeminiAPIClient;
 use crate::youtube::youtube_channel::youtube_channel_error::YoutubeChannelError;
 use crate::youtube::youtube_channel::youtube_channel_model::{ChannelKeywordResponse, ChannelResponse, YoutubeChannel, YoutubeChannelKeyword};
@@ -30,7 +31,7 @@ impl YoutubeChannelService {
         }
     }
     
-    pub async fn request_analyze_youtube_channel_keywords(&self, channel_handle: String) -> Result<serde_json::Value, Box<dyn Error>> {
+    pub async fn request_analyze_youtube_channel_keywords(&self, channel_handle: String) -> Result<serde_json::Value, AppError> {
         let search_query = if channel_handle.starts_with('@') {
             channel_handle
         } else {
@@ -82,7 +83,10 @@ impl YoutubeChannelService {
         }
         
         let mut final_keywords_map = HashMap::new();
-        for video_chunk in detailed_videos.chunks(40) {
+        let mut count = 0;
+        for video_chunk in detailed_videos.chunks(50) {
+            count += 1;
+            println!("{} 번쨰 청크", count);
             let videos: Vec<YoutubeVideo> = video_chunk
                 .iter()
                 .map(YoutubeVideo::from)
@@ -143,9 +147,9 @@ impl YoutubeChannelService {
         })
     }
     
-    pub async fn get_youtube_channel_keywords(&self, channel_id: &str) -> Result<Vec<ChannelKeywordResponse>, Box<dyn Error>> {
+    pub async fn get_youtube_channel_keywords(&self, channel_handle: &str) -> Result<Vec<ChannelKeywordResponse>, Box<dyn Error>> {
         let youtube_channel_keywords = self.youtube_channel_repository
-            .find_keywords_by_channel_id_order_by_view_count(channel_id, 50)
+            .find_keywords_by_channel_handle_order_by_view_count(channel_handle, 50)
             .await?;
         let response = youtube_channel_keywords
             .iter()

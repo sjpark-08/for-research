@@ -38,7 +38,7 @@ impl AuthService {
         let is_valid = verify(&request.password, &user.password)
             .map_err(|_| AuthError::InternalServerError("Password verification failed".into()))?;
         if !is_valid {
-            return Err(AuthError::Unauthorized)
+            return Err(AuthError::InvalidPassword)
         }
         
         let user_public_id = user.public_id.clone();
@@ -70,7 +70,7 @@ impl AuthService {
         
         let cookie = Cookie::build("refresh_token", refresh_token.clone())
             .path("/")
-            .secure(true)
+            .secure(true)   
             .http_only(true)
             .same_site(SameSite::Lax)
             .finish();
@@ -128,7 +128,7 @@ impl AuthService {
             .await?
             .ok_or(AuthError::Unauthorized)?;
         
-        if existing_refresh_token != token_data.claims.sub {
+        if existing_refresh_token != refresh_token {
             return Err(AuthError::Unauthorized);
         }
         

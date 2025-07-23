@@ -51,7 +51,7 @@ impl YoutubeVideoService {
         let search_query = search_tags.join("|");
         let mut video_ids = Vec::new();
         
-        for day in 0..7 {
+        for day in 0..8 {
             let now = Utc::now();
             let end_time = now - TimeDelta::days(day);
             let start_time = now - TimeDelta::days(day + 1);

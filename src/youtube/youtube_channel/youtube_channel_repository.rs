@@ -16,7 +16,7 @@ pub trait YoutubeChannelRepository: Send + Sync {
     
     async fn count_all_channels(&self) -> Result<i64, Error>;
     
-    async fn find_keywords_by_channel_id_order_by_view_count(&self, channel_id: &str, limit: u32) -> Result<Vec<YoutubeChannelKeyword>, Error>;
+    async fn find_keywords_by_channel_handle_order_by_view_count(&self, channel_handle: &str, limit: u32) -> Result<Vec<YoutubeChannelKeyword>, Error>;
     
     async fn update_channel_finished_by_id(&self, io: i64) -> Result<(), Error>;
     
@@ -132,17 +132,18 @@ impl YoutubeChannelRepository for YoutubeChannelSqlxRepository {
         Ok(row.count)
     }
     
-    async fn find_keywords_by_channel_id_order_by_view_count(&self, channel_id: &str, limit: u32) -> Result<Vec<YoutubeChannelKeyword>, Error> {
+    async fn find_keywords_by_channel_handle_order_by_view_count(&self, channel_handle: &str, limit: u32) -> Result<Vec<YoutubeChannelKeyword>, Error> {
         let keywords = sqlx::query_as!(
             YoutubeChannelKeyword,
             r#"
-                SELECT id, youtube_channel_id, keyword_text, view_count
-                FROM youtube_channel_keywords
-                WHERE youtube_channel_id = ?
+                SELECT yck.id, yck.youtube_channel_id, yck.keyword_text, yck.view_count
+                FROM youtube_channel_keywords yck
+                JOIN youtube_channels yc on yc.id = yck.youtube_channel_id
+                WHERE yc.channel_handle = ?
                 ORDER BY view_count DESC
                 LIMIT ?
             "#,
-            channel_id,
+            channel_handle,
             limit
         )
             .fetch_all(&self.db_pool)

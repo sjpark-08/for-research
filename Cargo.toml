@@ -35,3 +35,4 @@ jsonwebtoken = "9.3.1"
 redis = { version = "0.32.4", features = ["tokio-comp", "r2d2"]}
 r2d2 = "0.8.10"
 anyhow = "1.0.98"
+actix-cors = "0.7.1"

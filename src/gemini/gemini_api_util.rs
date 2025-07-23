@@ -46,50 +46,42 @@ impl GeminiAPIClient {
         let prompt = prompt_template.replace("__VIDEO_DATA_PLACEHOLDER__", &prompt_data_str);
         println!("{}", prompt);
         
-        let api_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+        let api_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
         
-        let retry_strategy = ExponentialBackoff::from_millis(100)
-            .map(jitter)
-            .take(3);
+        let response = self.http_client
+            .post(api_url)
+            .header("x-goog-api-key", &self.api_key)
+            .header("Content-Type", "application/json")
+            .timeout(Duration::from_secs(180))
+            .json(&serde_json::json!({
+                "contents": [{ "parts": [{ "text": prompt }] }],
+                "generationConfig": {
+                    "temperature": 0.1,
+                    "response_mime_type": "application/json",
+                }
+            }))
+            .send()
+            .await?
+            .error_for_status()?
+            .json::<GeminiApiResponse>()
+            .await?;
         
-        let action = || async {
-            let response = self.http_client
-                .post(api_url)
-                .header("x-goog-api-key", &self.api_key)
-                .header("Content-Type", "application/json")
-                .timeout(Duration::from_secs(120))
-                .json(&serde_json::json!({
-                    "contents": [{ "parts": [{ "text": prompt }] }],
-                    "generationConfig": {
-                        "temperature": 0.1,
-                        "response_mime_type": "application/json",
-                    }
-                }))
-                .send()
-                .await?
-                .error_for_status()?
-                .json::<GeminiApiResponse>()
-                .await?;
-            
-            let keyword_json_str = response
-                .candidates
-                .get(0)
-                .and_then(|c| c.content.parts.get(0))
-                .map(|p| p.text.as_str())
-                .ok_or("Gemini - 키워드 추출 실패")?;
-            println!("\n--- Gemini로부터 받은 실제 응답 ---");
-            println!("{}", keyword_json_str);
-            println!("------------------------------------\n");
-            
-            let keywords_results: Vec<GeminiKeywordResponse> = serde_json::from_str(&keyword_json_str)?;
-            let keyword_map: HashMap<String, Vec<String>> = keywords_results
-                .into_iter()
-                .map(|res| (res.video_id, res.keywords))
-                .collect();
-            
-            Ok(keyword_map)
-        };
+        let keyword_json_str = response
+            .candidates
+            .get(0)
+            .and_then(|c| c.content.parts.get(0))
+            .map(|p| p.text.as_str())
+            .ok_or("Gemini - 키워드 추출 실패")?;
+        println!("\n--- Gemini로부터 받은 실제 응답 ---");
+        println!("{}", keyword_json_str);
+        println!("------------------------------------\n");
         
-        Retry::spawn(retry_strategy, action).await
+        let keywords_results: Vec<GeminiKeywordResponse> = serde_json::from_str(&keyword_json_str)?;
+        let keyword_map: HashMap<String, Vec<String>> = keywords_results
+            .into_iter()
+            .map(|res| (res.video_id, res.keywords))
+            .collect();
+        
+        Ok(keyword_map)
     }
 }
