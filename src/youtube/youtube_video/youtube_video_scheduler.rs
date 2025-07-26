@@ -11,7 +11,7 @@ pub fn init_scheduler(app_state: AppState) {
         let app_state_for_daily_task = app_state.clone();
         scheduler
             .every(1.day())
-            .at("10:52")
+            .at("09:01")
             .run(move || {
                 let app_state_clone = app_state_for_daily_task.clone();
                 async move {

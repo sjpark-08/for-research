@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::error::Error;
 use chrono::{TimeDelta, Timelike, Utc};
+use chrono_tz::Asia::Seoul;
 use crate::gemini::gemini_api_util::GeminiAPIClient;
 use crate::youtube::youtube_data_api::youtube_data_api_model::VideoItem;
 use crate::youtube::youtube_data_api::youtube_data_api_util::YoutubeDataAPIClient;
@@ -52,7 +53,7 @@ impl YoutubeVideoService {
         let mut video_ids = Vec::new();
         
         for day in 0..8 {
-            let now = Utc::now();
+            let now = Utc::now().with_timezone(&Seoul);
             let end_time = now - TimeDelta::days(day);
             let start_time = now - TimeDelta::days(day + 1);
             let mut next_page_token: Option<String> = None;
@@ -62,8 +63,8 @@ impl YoutubeVideoService {
                 let response = self.youtube_data_api_client
                                    .search_popular_shorts_ids(
                                        &search_query,
-                                       start_time,
-                                       end_time,
+                                       start_time.with_timezone(&Utc),
+                                       end_time.with_timezone(&Utc),
                                        next_page_token.as_deref()
                                    )
                                    .await?;
@@ -149,15 +150,10 @@ impl YoutubeVideoService {
     }
     
     async fn calculate_and_store_daily_rankings(&self) -> Result<(), Box<dyn Error>> {
-        let today = Utc::now().date_naive();
-        let one_week_ago = Utc::now() - TimeDelta::days(7);
-        let start_of_day = one_week_ago
-            .with_hour(0).unwrap()
-            .with_minute(0).unwrap()
-            .with_second(0).unwrap()
-            .with_nanosecond(0).unwrap();
+        let today = Utc::now().with_timezone(&Seoul).date_naive();
+        let one_week_ago = Utc::now().with_timezone(&Seoul).date_naive() - TimeDelta::days(7);
         
-        let trends = self.youtube_video_repository.get_keyword_trends(start_of_day, 50).await?;
+        let trends = self.youtube_video_repository.get_keyword_trends(one_week_ago, 50).await?;
         
         let rankings_to_save: Vec<YoutubeKeywordRanking> = trends
             .into_iter()
@@ -180,7 +176,7 @@ impl YoutubeVideoService {
     }
 
     pub async fn get_daily_rankings(&self) -> Result<Vec<KeywordRankingResponse>, Box<dyn Error>> {
-        let today = Utc::now().date_naive();
+        let today = Utc::now().with_timezone(&Seoul).date_naive();
         let yesterday = today - TimeDelta::days(1);
         const RANKING_LIMIT: u32 = 50;
         

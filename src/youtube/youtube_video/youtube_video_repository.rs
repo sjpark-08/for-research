@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use async_trait::async_trait;
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::NaiveDate;
 use mockall::automock;
 use sqlx::{Error, MySqlPool};
 use crate::youtube::youtube_video::youtube_video_model::{KeywordTrend, YoutubeKeyword, YoutubeKeywordRanking, YoutubeVideo};
@@ -10,7 +10,7 @@ use crate::youtube::youtube_video::youtube_video_model::{KeywordTrend, YoutubeKe
 pub trait YoutubeVideoRepository: Send + Sync {
     async fn save_video_and_keywords(&self, youtube_video: YoutubeVideo, keywords: Vec<YoutubeKeyword>) -> Result<(), Error>;
     
-    async fn get_keyword_trends(&self, since: DateTime<Utc>, limit: u32) -> Result<Vec<KeywordTrend>, Error>;
+    async fn get_keyword_trends(&self, since: NaiveDate, limit: u32) -> Result<Vec<KeywordTrend>, Error>;
     
     async fn save_keyword_rankings(&self, rankings: &[YoutubeKeywordRanking]) -> Result<(), Error>;
     
@@ -149,7 +149,7 @@ impl YoutubeVideoRepository for YoutubeVideoSqlxRepository {
     
     async fn get_keyword_trends(
         &self,
-        since: DateTime<Utc>,
+        since: NaiveDate,
         limit: u32
     ) -> Result<Vec<KeywordTrend>, Error> {
         let trends = sqlx::query_as!(
