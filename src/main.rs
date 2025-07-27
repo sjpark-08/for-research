@@ -69,7 +69,7 @@ async fn main() -> std::io::Result<()>{
             .supports_credentials()
             .max_age(3600)
             .expose_headers(vec![header::AUTHORIZATION])
-            .allowed_origin("http://localhost:3000");
+            .allowed_origin("https://editors.clipink.ai");
         
         App::new()
             .wrap(cors)
