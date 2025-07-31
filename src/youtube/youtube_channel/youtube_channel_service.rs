@@ -149,7 +149,7 @@ impl YoutubeChannelService {
     
     pub async fn get_youtube_channel_keywords(&self, channel_handle: &str) -> Result<Vec<ChannelKeywordResponse>, Box<dyn Error>> {
         let youtube_channel_keywords = self.youtube_channel_repository
-            .find_keywords_by_channel_handle_order_by_view_count(channel_handle, 50)
+            .find_keywords_by_channel_handle_order_by_view_count(channel_handle, 100)
             .await?;
         let response = youtube_channel_keywords
             .iter()
