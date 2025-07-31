@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::error::Error;
-use chrono::{TimeDelta, Timelike, Utc};
+use chrono::{TimeDelta, Utc};
 use chrono_tz::Asia::Seoul;
 use crate::gemini::gemini_api_util::GeminiAPIClient;
 use crate::youtube::youtube_data_api::youtube_data_api_model::VideoItem;
@@ -176,7 +176,10 @@ impl YoutubeVideoService {
     }
 
     pub async fn get_daily_rankings(&self) -> Result<Vec<KeywordRankingResponse>, Box<dyn Error>> {
-        let today = Utc::now().with_timezone(&Seoul).date_naive();
+        let mut today = Utc::now().with_timezone(&Seoul).date_naive();
+        if !self.youtube_video_repository.today_ranking_exists(today).await? {
+            today = today - TimeDelta::days(1);
+        }
         let yesterday = today - TimeDelta::days(1);
         const RANKING_LIMIT: u32 = 50;
         

@@ -15,6 +15,8 @@ pub trait YoutubeVideoRepository: Send + Sync {
     async fn save_keyword_rankings(&self, rankings: &[YoutubeKeywordRanking]) -> Result<(), Error>;
     
     async fn get_keyword_rankings(&self, date: NaiveDate, limit: u32) -> Result<Vec<YoutubeKeywordRanking>, Error>;
+    
+    async fn today_ranking_exists(&self, date: NaiveDate) -> Result<bool, Error>;
 }
 
 #[derive(Clone)]
@@ -219,5 +221,20 @@ impl YoutubeVideoRepository for YoutubeVideoSqlxRepository {
             .await?;
         
         Ok(rankings)
+    }
+    
+    async fn today_ranking_exists(&self, date: NaiveDate) -> Result<bool, Error> {
+        let result = sqlx::query!(
+            r#"
+                SELECT *
+                FROM youtube_keyword_rankings
+                WHERE ranking_date = ?
+            "#,
+            date
+        )
+            .fetch_optional(&self.db_pool)
+            .await?;
+        
+        Ok(result.is_some())
     }
 }
