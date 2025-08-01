@@ -42,7 +42,7 @@ impl YoutubeVideoService {
         
         self.transform_and_save_video_data(&video_items).await?;
         
-        self.calculate_and_store_daily_rankings().await?;
+        self.calculate_and_save_daily_rankings().await?;
 
         Ok(())
     }
@@ -52,7 +52,7 @@ impl YoutubeVideoService {
         let search_query = search_tags.join("|");
         let mut video_ids = Vec::new();
         
-        for day in 0..8 {
+        for day in 0..9 {
             let now = Utc::now().with_timezone(&Seoul);
             let end_time = now - TimeDelta::days(day);
             let start_time = now - TimeDelta::days(day + 1);
@@ -149,11 +149,11 @@ impl YoutubeVideoService {
         Ok(())
     }
     
-    async fn calculate_and_store_daily_rankings(&self) -> Result<(), Box<dyn Error>> {
+    async fn calculate_and_save_daily_rankings(&self) -> Result<(), Box<dyn Error>> {
         let today = Utc::now().with_timezone(&Seoul).date_naive();
         let one_week_ago = Utc::now().with_timezone(&Seoul).date_naive() - TimeDelta::days(7);
         
-        let trends = self.youtube_video_repository.get_keyword_trends(one_week_ago, 50).await?;
+        let trends = self.youtube_video_repository.get_keyword_trends(one_week_ago, 100).await?;
         
         let rankings_to_save: Vec<YoutubeKeywordRanking> = trends
             .into_iter()
@@ -181,7 +181,7 @@ impl YoutubeVideoService {
             today = today - TimeDelta::days(1);
         }
         let yesterday = today - TimeDelta::days(1);
-        const RANKING_LIMIT: u32 = 50;
+        const RANKING_LIMIT: u32 = 100;
         
         let today_rankings = self.youtube_video_repository.get_keyword_rankings(today, RANKING_LIMIT).await?;
         let yesterday_rankings = self. youtube_video_repository.get_keyword_rankings(yesterday, RANKING_LIMIT).await?;
